@@ -8,7 +8,7 @@ import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { groupByDay, totals } from "../model/stats";
 import { formatMoney } from "../model/money";
-import { dayKey, dayLabel, fullDateTime, monthLabel, monthRange, shiftMonth, trLower } from "../model/dates";
+import { dayKey, dayLabel, fullDateTime, periodLabel, periodRange, shiftPeriod, trLower } from "../model/dates";
 import { useEffect } from "react";
 
 const FILTERS = [
@@ -154,8 +154,9 @@ export default function ExpensesPage({ selectedId }) {
   const [monthTs, setMonthTs] = useState(Date.now());
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const range = monthRange(monthTs);
-  const isNow = monthRange(Date.now())[0] === range[0];
+  const startDay = k.budget.startDay;
+  const range = periodRange(monthTs, startDay);
+  const isNow = periodRange(Date.now(), startDay)[0] === range[0];
 
   const list = useMemo(() => {
     const q = trLower(query.trim());
@@ -172,21 +173,21 @@ export default function ExpensesPage({ selectedId }) {
       return hay.includes(q);
     });
   }, [k.transactions, range[0], filter, query]); // eslint-disable-line react-hooks/exhaustive-deps
-  const sums = useMemo(() => totals(list), [list]);
+  const sums = useMemo(() => totals(list, undefined, k.rates), [list, k.rates]);
   const groups = useMemo(() => groupByDay(list, dayKey), [list]);
 
   const master = (
     <div className="k-page">
-      <PageHeader title="Harcamalar" subtitle={query ? "Arama sonuçları (tüm aylar)" : monthLabel(monthTs)} right={<UndoRedoButtons />} />
+      <PageHeader title="Harcamalar" subtitle={query ? "Arama sonuçları (tüm aylar)" : periodLabel(monthTs, startDay)} right={<UndoRedoButtons />} />
       <div className="k-toolbar">
         <div className="k-month">
-          <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftMonth(monthTs, -1))} aria-label="Önceki ay">
+          <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, -1, startDay))} aria-label="Önceki ay">
             <ChevronLeft size={18} />
           </button>
           <button type="button" className="k-month-label" onClick={() => setMonthTs(Date.now())} disabled={isNow} aria-label="Bu aya dön">
-            {monthLabel(monthTs)}
+            {periodLabel(monthTs, startDay)}
           </button>
-          <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftMonth(monthTs, 1))} disabled={isNow} aria-label="Sonraki ay">
+          <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, 1, startDay))} disabled={isNow} aria-label="Sonraki ay">
             <ChevronRight size={18} />
           </button>
         </div>
@@ -213,7 +214,7 @@ export default function ExpensesPage({ selectedId }) {
         <EmptyState icon={<Receipt size={30} />} title={query ? "Sonuç bulunamadı" : "Bu ayda kayıt yok"} text={query ? "Farklı bir kelime dene." : "Yeni bir kayıt eklemek için + tuşuna dokun."} />
       ) : (
         groups.map((g) => {
-          const dt = totals(g.items);
+          const dt = totals(g.items, undefined, k.rates);
           return (
             <section key={g.key} className="k-day" aria-label={dayLabel(g.ts)}>
               <div className="k-day-head">

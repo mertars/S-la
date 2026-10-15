@@ -32,7 +32,6 @@ export default function Sheet({ open, onClose, title, children, footer, tall = f
   const ref = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
-  const pushed = useRef(false);
 
   useEffect(() => {
     if (!open) return;

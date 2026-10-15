@@ -29,10 +29,24 @@
 // Tag: { id, name, createdAt, updatedAt, deletedAt }
 // Template (şablon / kısayol): { id, name, kind, amountMinor|null, currency, categoryId,
 //   subcategoryId, accountId, merchant, note, tagIds[], quick: bool, order, useCount, lastUsedAt }
-// meta: { id: "settings", ... } , { id: "schema", version }
+// --- Parça 2 (şema v2; hepsi geriye uyumlu EK alanlar/depolar) ---
+// Transaction ek alanları: baseMinor (₺ karşılığı; yoksa amountMinor), installment {planId,index,total},
+//   recurringId, split {totalMinor, n, paidBy: "me"|personId, personIds[]}  (amountMinor = BENİM payım)
+// installments (taksit planı): { id, title, totalMinor, currency, rate, count, firstAt, categoryId, subcategoryId,
+//   accountId, merchant, note, tagIds, stoppedAt|null }          → her ay işlem üretir (id: g-inst-<plan>-<i>)
+// recurrings (tekrarlayan/abonelik/fatura): { id, title, type, kind, amountMinor, currency, frequency, interval,
+//   anchorAt, endAt, autoPost, paused, skipped[], categoryId, ..., remindDays }   (id: g-rec-<kural>-<i>)
+// people: { id, name }   debts: { id, personId, direction: "lent"|"borrowed", amountMinor, paidMinor, currency,
+//   dueAt, note, txId, settledAt }
+// goals (kumbara): { id, name, icon, color, targetMinor, currency, targetDate, monthlyPlanMinor, deposits[{id,amountMinor,at,note}] }
+// wishes: { id, name, priceMinor, currency, note, priority, categoryId, boughtAt, txId }
+// shopping: { id, name, qty, estimateMinor, categoryId, checked, doneAt, txId }
+// meta: { id: "settings", ... } , { id: "schema", version },
+//   { id: "budget", monthlyMinor, byCategory{catId:minor}, startDay(1-28), includePlanned }
+//   { id: "rates", enabled[], rates{USD:{rate,updatedAt}} }   { id: "activity", days[YYYY-MM-DD] }
 // blobs: { id, blob, type, createdAt }   (fiş fotoğrafları)
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export const DEFAULT_CURRENCY = "TRY";
 
 export const EMPTY_TX_EXTRAS = Object.freeze({

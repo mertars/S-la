@@ -6,4 +6,7 @@ export const PALETTES = [
   { key: "adacayi", name: "Adaçayı" },
   { key: "okyanus", name: "Okyanus" },
   { key: "mercan", name: "Mercan" },
+  { key: "bordo", name: "Bordo" },
+  { key: "tozpembe", name: "Toz Pembe" },
+  { key: "gulkurusu", name: "Gül Kurusu" },
 ];

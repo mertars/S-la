@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Clock, Plus, Trash2, X, Zap, Store, StickyNote, Hash } from "lucide-react";
+import { Camera, Clock, Plus, Trash2, X, Zap, Store, StickyNote, Hash, Layers, Users } from "lucide-react";
 import Sheet from "./Sheet";
 import NumPad from "./NumPad";
 import DateTimePicker from "./DateTimePicker";
 import { Segmented } from "./common";
 import { CategoryEditor, AccountEditor } from "./editors";
-import { Bubble, Icon } from "./icons";
+import { Icon } from "./icons";
 import { downscaleImage } from "./receipt";
 import { useKesem } from "../state/store";
-import { displayInput, formatMoney, minorToInput, parseAmountInput, pressKey } from "../model/money";
+import { displayInput, formatMoney, minorToInput, parseAmountInput, pressKey, rateOf, formatRate, CURRENCIES } from "../model/money";
+import { installmentAmounts, splitEqual } from "../model/finance";
+import { AmountField } from "./parts";
 import { dateTimeLabel, trLower } from "../model/dates";
 import { currencySymbol } from "../model/money";
 
@@ -22,7 +24,7 @@ const KINDS = [
 //   mode "template" : kısayol/şablon oluştur-düzenle (tutar isteğe bağlı)
 export default function AddSheet({ mode = "tx", initial = {}, editId = null, onClose }) {
   const k = useKesem();
-  const { settings, transactions, accounts, tags, categories } = k;
+  const { settings, transactions, accounts, tags } = k;
   const isTpl = mode === "template";
   const editingTx = editId ? k.txById(editId) : null;
   const editingTpl = isTpl && initial.id ? initial : null;
@@ -55,6 +57,18 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
   const [catEditor, setCatEditor] = useState(null);
   const [accEditor, setAccEditor] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Parça 2: para birimi + manuel kur, taksit, bölüşme
+  const [currency, setCurrency] = useState(initial.currency || "TRY");
+  const [rateMinor, setRateMinor] = useState(() => {
+    const r = initial.fx?.rate ?? rateOf(initial.currency || "TRY", k.rates);
+    return r && (initial.currency || "TRY") !== "TRY" ? Math.round(r * 100) : 0;
+  });
+  const [instOn, setInstOn] = useState(!!initial.installments);
+  const [instCount, setInstCount] = useState(6);
+  const [splitOn, setSplitOn] = useState(false);
+  const [splitNames, setSplitNames] = useState([]);
+  const [splitDraft, setSplitDraft] = useState("");
+  const [paidBy, setPaidBy] = useState("me");
   const [photoErr, setPhotoErr] = useState("");
   const touchedCat = useRef(!!initial.categoryId);
   const scrollRef = useRef(null);
@@ -82,7 +96,14 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
   const amountMinor = parseAmountInput(amount);
   const subs = categoryId ? k.subCategories(categoryId) : [];
   const topCats = k.topCategories(kind);
-  const valid = isTpl ? name.trim().length > 0 : amountMinor > 0 && !!categoryId;
+  const foreign = currency !== "TRY";
+  const rateOk = !foreign || rateMinor > 0;
+  const fxRate = foreign ? rateMinor / 100 : 1;
+  const splitList = splitDraft.trim() ? [...splitNames, splitDraft.trim()] : splitNames;
+  const splitActive = splitOn && !isTpl && !editId && kind === "expense" && splitList.length > 0;
+  const instActive = instOn && !isTpl && !editId && kind === "expense" && instCount > 1;
+  const valid = isTpl ? name.trim().length > 0 : amountMinor > 0 && !!categoryId && rateOk && (!splitOn || splitList.length > 0);
+  const canMore = !isTpl && !editId && kind === "expense";
   const cat = categoryId ? k.catById(categoryId) : null;
 
   const switchKind = (nk) => {
@@ -91,6 +112,17 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
     setCategoryId(firstCat(nk));
     setSubId(null);
     touchedCat.current = false;
+  };
+  const pickCurrency = (c) => {
+    setCurrency(c);
+    const r = rateOf(c, k.rates);
+    setRateMinor(c === "TRY" ? 0 : r ? Math.round(r * 100) : 0);
+  };
+  const addPerson = (raw) => {
+    const n = raw.trim().slice(0, 28);
+    if (!n) return;
+    setSplitNames((cur) => (cur.some((x) => trLower(x) === trLower(n)) ? cur : [...cur, n]));
+    setSplitDraft("");
   };
   const pickCategory = (id) => {
     touchedCat.current = true;
@@ -181,6 +213,8 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
     subcategoryId: subId,
     accountId,
     occurredAt: whenTouched ? when : Date.now(),
+    currency,
+    rate: foreign ? fxRate : undefined,
     merchant,
     note,
     tagNames: tagDraft.trim() ? [...tagNames, tagDraft.trim()] : tagNames,
@@ -222,8 +256,14 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
         }
       } else if (editId) {
         if (await k.updateTransaction(editId, { ...draftInput(), receipt })) onClose();
+      } else if (instActive) {
+        const d = draftInput();
+        const plan = await k.createInstallmentPlan({ ...d, totalMinor: amountMinor, count: instCount, firstAt: d.occurredAt, title: merchant.trim() || (subId && k.catById(subId).name) || cat?.name });
+        if (plan) onClose();
       } else {
-        if (await k.addTransaction({ ...draftInput(), receipt, templateId: initial.templateId || null })) onClose();
+        const links = initial.linkIds ? initial.linkIds.map((l) => ({ ...l, patch: (tx) => ({ ...(l.kind === "wish" ? { boughtAt: tx.occurredAt } : { checked: true, doneAt: tx.occurredAt }), txId: tx.id }) })) : undefined;
+        const split = splitActive ? { names: splitList, paidBy } : undefined;
+        if (await k.addTransaction({ ...draftInput(), receipt, templateId: initial.templateId || null, links, split })) onClose();
       }
     } finally {
       setBusy(false);
@@ -247,11 +287,11 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
 
   const title = isTpl ? (editingTpl ? "Kısayolu düzenle" : "Yeni kısayol") : editId ? "Kaydı düzenle" : kind === "income" ? "Gelir ekle" : "Harcama ekle";
   const receiptShown = receipt === null ? null : receipt?.url || existingUrl;
-  const sym = currencySymbol("TRY");
+  const sym = currencySymbol(currency);
   const focusOther = () => setShowPad(false);
 
   const footer = showPad ? (
-    <NumPad onKey={onKey} onSubmit={save} canSubmit={valid && !busy} submitLabel={editId || editingTpl ? "Kaydet" : isTpl ? "Kısayol ekle" : "Ekle"} />
+    <NumPad onKey={onKey} onSubmit={save} canSubmit={valid && !busy} submitLabel={editId || editingTpl ? "Kaydet" : isTpl ? "Kısayol ekle" : instActive ? "Taksitlendir" : "Ekle"} />
   ) : (
     <div className="k-footbar">
       <button type="button" className="k-amount-mini" onClick={() => { setDtOpen(false); setShowPad(true); }} aria-label="Tutarı düzenle">
@@ -259,7 +299,7 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
         <b>{amountMinor ? formatMoney(amountMinor) : "—"}</b>
       </button>
       <button type="button" className="k-btn primary" disabled={!valid || busy} onClick={save}>
-        {editId || editingTpl ? "Kaydet" : isTpl ? "Kısayol ekle" : "Ekle"}
+        {editId || editingTpl ? "Kaydet" : isTpl ? "Kısayol ekle" : instActive ? "Taksitlendir" : "Ekle"}
       </button>
     </div>
   );
@@ -284,6 +324,29 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
             <span className="k-amount-sym">{sym}</span>
           </button>
           {isTpl && !amount && <p className="k-hint">Tutarı boş bırakırsan kısayola dokununca tutarı sen girersin.</p>}
+
+          {!isTpl && k.enabledCurrencies.length > 1 && (
+            <div className="k-field" style={{ alignItems: "center" }}>
+              <div className="k-curr" role="radiogroup" aria-label="Para birimi">
+                {CURRENCIES.filter((c) => k.enabledCurrencies.includes(c) || c === currency).map((c) => (
+                  <button key={c} type="button" role="radio" aria-checked={currency === c} className={`k-chip sm ${currency === c ? "on" : ""}`} onClick={() => pickCurrency(c)}>
+                    {currencySymbol(c)} {c}
+                  </button>
+                ))}
+              </div>
+              {foreign && (
+                <div className="k-row-between" style={{ width: "100%" }}>
+                  <div style={{ flex: 1 }}>
+                    <AmountField label={`Kur · 1 ${currencySymbol(currency)} = ? ₺`} value={rateMinor} onChange={setRateMinor} placeholder="Kuru gir" />
+                  </div>
+                </div>
+              )}
+              {foreign && rateMinor > 0 && amountMinor > 0 && (
+                <p className="k-hint" style={{ margin: 0 }}>≈ {formatMoney(Math.round(amountMinor * fxRate))} · kur {formatRate(fxRate)} ₺</p>
+              )}
+              {foreign && rateMinor === 0 && <p className="k-error" style={{ margin: 0 }}>Bu para birimi için kuru girmelisin.</p>}
+            </div>
+          )}
 
           <div className="k-field">
             <div className="k-field-label">Kategori</div>
@@ -403,6 +466,94 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
               </div>
             )}
           </div>
+
+          {canMore && (
+            <div className="k-add-more">
+              <div className="k-field">
+                <button type="button" className="k-row-btn" aria-pressed={instOn} onClick={() => { setInstOn((v) => !v); setSplitOn(false); }}>
+                  <Layers size={18} />
+                  <span>Taksitli alışveriş</span>
+                  <em>{instOn ? "Açık" : "Kapalı"}</em>
+                </button>
+                {instOn && (
+                  <div className="k-card calm" style={{ padding: 12 }}>
+                    <div className="k-chips wrap" role="radiogroup" aria-label="Taksit sayısı">
+                      {[2, 3, 6, 9, 12, 18, 24].map((n) => (
+                        <button key={n} type="button" role="radio" aria-checked={instCount === n} className={`k-chip sm ${instCount === n ? "on" : ""}`} onClick={() => setInstCount(n)}>
+                          {n} taksit
+                        </button>
+                      ))}
+                    </div>
+                    {amountMinor > 0 && instCount > 1 && (
+                      <p className="k-hint" style={{ margin: "10px 2px 0" }}>
+                        {(() => {
+                          const a = installmentAmounts(amountMinor, instCount);
+                          return a[0] === a[1] ? `${instCount} × ${formatMoney(a[0], currency)}` : `1. taksit ${formatMoney(a[0], currency)}, sonrakiler ${formatMoney(a[1], currency)}`;
+                        })()}{" "}
+                        · her ay otomatik kaydedilir
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="k-field">
+                <button type="button" className="k-row-btn" aria-pressed={splitOn} onClick={() => { setSplitOn((v) => !v); setInstOn(false); }}>
+                  <Users size={18} />
+                  <span>Bölüş</span>
+                  <em>{splitOn ? "Açık" : "Kapalı"}</em>
+                </button>
+                {splitOn && (
+                  <div className="k-card calm" style={{ padding: 12 }}>
+                    <div className="k-field-label" style={{ marginBottom: 8 }}>Kiminle?</div>
+                    <div className="k-chips wrap">
+                      {[...new Set([...splitNames, ...k.people.map((p) => p.name)])].map((n) => {
+                        const on = splitNames.some((x) => trLower(x) === trLower(n));
+                        return (
+                          <button key={n} type="button" aria-pressed={on} className={`k-chip sm ${on ? "on" : ""}`} onClick={() => (on ? setSplitNames((c) => c.filter((x) => trLower(x) !== trLower(n))) : addPerson(n))}>
+                            {n}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <label className="k-input-row" style={{ marginTop: 10 }}>
+                      <Users size={16} />
+                      <input value={splitDraft} onChange={(e) => setSplitDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addPerson(splitDraft))} onFocus={focusOther} placeholder="Kişi adı ekle" maxLength={28} aria-label="Kişi adı" />
+                    </label>
+                    {splitList.length > 0 && (
+                      <>
+                        <div className="k-field-label" style={{ margin: "12px 0 8px" }}>Kim ödedi?</div>
+                        <Segmented value={paidBy === "me" ? "me" : "other"} onChange={(v) => setPaidBy(v === "me" ? "me" : splitList[0])} options={[{ value: "me", label: "Ben ödedim" }, { value: "other", label: "Arkadaş ödedi" }]} label="Ödeyen" />
+                        {paidBy !== "me" && splitList.length > 1 && (
+                          <div className="k-chips wrap" style={{ marginTop: 8 }}>
+                            {splitList.map((n) => (
+                              <button key={n} type="button" aria-pressed={paidBy === n} className={`k-chip sm ${paidBy === n ? "on" : ""}`} onClick={() => setPaidBy(n)}>
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {amountMinor > 0 && (() => {
+                          const sh = splitEqual(amountMinor, splitList.length + 1, paidBy === "me");
+                          return (
+                            <div style={{ marginTop: 12 }}>
+                              <div className="k-split-row"><span className="k-muted">Senin payın</span><b>{formatMoney(sh.myShare, currency)}</b></div>
+                              {paidBy === "me" ? (
+                                splitList.map((n) => (
+                                  <div key={n} className="k-split-row"><span>{n} sana borçlu</span><b>{formatMoney(sh.otherShare, currency)}</b></div>
+                                ))
+                              ) : (
+                                <div className="k-split-row"><span>{paidBy}'e borçlusun</span><b>{formatMoney(sh.myShare, currency)}</b></div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {!isTpl && (
             <div className="k-field">

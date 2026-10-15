@@ -1,14 +1,16 @@
 import { useMemo, useRef } from "react";
-import { ArrowLeft, Plus, Repeat, Sparkles, Wallet, X, Zap } from "lucide-react";
+import { ArrowLeft, CalendarClock, Flame, Plus, Repeat, Sparkles, Wallet, X, Zap } from "lucide-react";
+import { Ring, STATE_LABEL, pct } from "../ui/parts";
+import { useFinance } from "../state/derived";
 import PageHeader from "../ui/PageHeader";
 import TxRow from "../ui/TxRow";
 import { Bubble, Icon } from "../ui/icons";
 import { EmptyState, UndoRedoButtons } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
-import { dayTotals, monthTotals, suggestShortcuts } from "../model/stats";
+import { periodTotals, suggestShortcuts } from "../model/stats";
+import { relativeDayLabel, startOfDay, periodRange, periodLabel } from "../model/dates";
 import { formatMoney } from "../model/money";
-import { monthLabel, trLower } from "../model/dates";
 import { STARTER_IDEAS } from "../model/defaults";
 
 // Uzun bas → tutarı değiştirerek ekle; kısa dokun → anında ekle.
@@ -67,9 +69,13 @@ export default function HomePage() {
   const k = useKesem();
   const app = useApp();
   const { transactions, templates, settings } = k;
-  const now = Date.now();
-  const month = useMemo(() => monthTotals(transactions, now), [transactions]); // eslint-disable-line react-hooks/exhaustive-deps
-  const today = useMemo(() => dayTotals(transactions, now), [transactions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const f = useFinance();
+  const now = f.now;
+  const st = f.status;
+  const range = periodRange(now, k.budget.startDay);
+  const month = useMemo(() => periodTotals(transactions, range, k.rates), [transactions, k.rates, range[0]]); // eslint-disable-line react-hooks/exhaustive-deps
+  const today = useMemo(() => periodTotals(transactions, [startOfDay(now), startOfDay(now) + 86400000], k.rates), [transactions, k.rates]); // eslint-disable-line react-hooks/exhaustive-deps
+  const upcoming = f.planned.slice(0, 3);
   const quicks = templates.filter((t) => t.quick);
   const suggestions = useMemo(() => suggestShortcuts(transactions, templates, settings.dismissedSuggestions), [transactions, templates, settings.dismissedSuggestions]);
   const lastAdded = useMemo(() => transactions.reduce((a, t) => (!a || t.createdAt > a.createdAt ? t : a), null), [transactions]);
@@ -87,7 +93,7 @@ export default function HomePage() {
     <div className="k-page">
       <PageHeader
         title={app.menuLabel}
-        subtitle={monthLabel(now)}
+        subtitle={periodLabel(now, k.budget.startDay)}
         left={
           <button type="button" className="k-back" onClick={app.exit} aria-label="Routinix'e dön">
             <ArrowLeft size={20} />
@@ -97,24 +103,71 @@ export default function HomePage() {
         right={<UndoRedoButtons />}
       />
 
-      <section className="k-hero" aria-label="Bu ayın özeti">
-        <span className="k-hero-label">Bu ay harcanan</span>
-        <strong className="k-hero-amount">{formatMoney(month.expense)}</strong>
-        <div className="k-hero-row">
-          <div>
-            <span>Gelir</span>
-            <b className="pos">{formatMoney(month.income)}</b>
+      <div className="k-bento-wrap">
+        <div className="k-bento">
+          {st.hasBudget ? (
+            <section className="k-card hero b-3x1" style={{ "--wt": 4, "--ht": 2 }} aria-label="Bugün harcayabileceğin tutar">
+              <div className="k-row-between">
+                <div className="k-cap">Bugün harcayabileceğin</div>
+                <span className={`k-pill ${st.state}`}>{STATE_LABEL[st.state]}</span>
+              </div>
+              <div className="k-row-between" style={{ gap: 14 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div className={`k-num xl ${st.todayLeft < 0 ? "k-state-over" : ""}`}>{formatMoney(Math.max(st.todayLeft, st.todayLeft < 0 ? st.todayLeft : 0), "TRY", { hideZeroDecimals: true })}</div>
+                  <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>
+                    Günlük pay {formatMoney(st.allowance, "TRY", { hideZeroDecimals: true })} · bugün {formatMoney(st.spentToday, "TRY", { hideZeroDecimals: true })} harcandı
+                  </div>
+                </div>
+                <Ring value={st.ratio} size={74} stroke={8} state={st.state} label={`Bütçenin ${pct(st.ratio)} kullanıldı`}>
+                  <span style={{ fontSize: 14 }}>{pct(st.ratio)}</span>
+                </Ring>
+              </div>
+              <div className="k-hero-row2">
+                <div><span>Kalan bütçe</span><b className={st.free < 0 ? "k-state-over" : ""}>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</b></div>
+                <div><span>Kalan gün</span><b>{st.daysLeft}</b></div>
+                <div><span>Planlı ödeme</span><b>{formatMoney(st.committed, "TRY", { hideZeroDecimals: true })}</b></div>
+              </div>
+            </section>
+          ) : (
+            <section className="k-card hero b-3x1" style={{ "--wt": 4, "--ht": 2 }} aria-label="Dönem özeti">
+              <div className="k-cap">Bu dönem harcanan</div>
+              <div className="k-num xl">{formatMoney(month.expense, "TRY", { hideZeroDecimals: true })}</div>
+              <div className="k-muted" style={{ fontSize: 13.5 }}>Bir bütçe belirlersen her gün ne kadar harcayabileceğini hesaplarım.</div>
+              <button type="button" className="k-btn primary" onClick={() => app.navigate("daha-fazla/butce")}>Bütçe belirle</button>
+            </section>
+          )}
+          <div className="k-card calm b-1x1">
+            <div className="k-cap">Bugün</div>
+            <b className="k-num md">{formatMoney(today.expense, "TRY", { hideZeroDecimals: true })}</b>
+            <span className="k-tile-sub">harcandı</span>
           </div>
-          <div>
-            <span>Bugün</span>
-            <b>{formatMoney(today.expense)}</b>
+          <button type="button" className="k-card accent b-2x2" style={{ "--wt": 2 }} onClick={() => app.navigate("daha-fazla/takvim")} aria-label="Yaklaşan ödemeler">
+            <div className="k-cap"><CalendarClock size={14} /> Yaklaşan ödemeler</div>
+            {upcoming.length ? (
+              <div className="k-stack" style={{ gap: 8, width: "100%" }}>
+                {upcoming.map((u) => (
+                  <div key={u.id} className="k-split-row" style={{ padding: 0 }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="k-ellip" style={{ display: "block", fontWeight: 650, fontSize: 13.5 }}>{u.title}</span>
+                      <span className={`k-tile-sub ${u.status === "overdue" ? "k-state-over" : u.status === "soon" || u.status === "today" ? "k-state-near" : ""}`} style={u.status !== "later" ? { fontWeight: 700 } : {}}>{relativeDayLabel(u.days)}</span>
+                    </span>
+                    <b style={{ fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>{formatMoney(u.amountMinor, u.currency, { hideZeroDecimals: true })}</b>
+                  </div>
+                ))}
+              </div>
+            ) : <span className="k-tile-sub">Yaklaşan ödeme yok</span>}
+          </button>
+          <div className="k-card calm b-1x1">
+            <div className="k-cap">Gelir</div>
+            <b className="k-num md pos">{formatMoney(month.income, "TRY", { hideZeroDecimals: true })}</b>
+            <span className="k-tile-sub">bu dönem</span>
           </div>
-          <div>
-            <span>Kalan</span>
-            <b className={month.net < 0 ? "neg" : ""}>{formatMoney(month.net)}</b>
-          </div>
+          <button type="button" className="k-card calm b-3x1" style={{ "--wt": 2 }} onClick={() => app.navigate("daha-fazla/rozetler")} aria-label="Harcamasız gün serisi">
+            <div className="k-cap"><Flame size={14} /> Harcamasız seri</div>
+            <b className="k-num md">{f.streak.current} gün</b>
+          </button>
         </div>
-      </section>
+      </div>
 
       <section className="k-section" aria-label="Sık harcamalar">
         <div className="k-section-head">

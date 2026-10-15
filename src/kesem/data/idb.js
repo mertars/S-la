@@ -6,8 +6,12 @@
 // Arayüz (Adapter) bilerek küçük: getAll / get / apply. İleride Supabase
 // senkronizasyonu aynı arayüzü uygulayan bir adaptörle eklenebilir.
 
-export const STORES = ["transactions", "categories", "accounts", "tags", "templates", "meta", "blobs"];
-const DB_VERSION = 1;
+// Sürüm 2 (Parça 2): yalnızca YENİ depolar eklenir; mevcut kayıtlara dokunulmaz.
+export const STORES = [
+  "transactions", "categories", "accounts", "tags", "templates", "meta", "blobs",
+  "installments", "recurrings", "people", "debts", "goals", "wishes", "shopping",
+];
+const DB_VERSION = 2;
 
 const reqP = (req) =>
   new Promise((resolve, reject) => {

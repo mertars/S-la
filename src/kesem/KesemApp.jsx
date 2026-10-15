@@ -66,12 +66,27 @@ function Shell({ onExit }) {
     document.querySelector(".k-main")?.scrollTo?.(0, 0);
   }, [tab]);
 
+  // Açılışta (ve gün değişince / uygulamaya dönünce): vadesi gelen taksit & otomatik abonelikleri gerçek kayda çevir;
+  // bugünü "kayıt tuttuğun gün" olarak işaretle (harcamasız gün serisi).
+  const { ready, materialize, touchActivity } = k;
+  useEffect(() => {
+    if (!ready) return;
+    const run = () => {
+      materialize();
+      touchActivity();
+    };
+    run();
+    const onVis = () => document.visibilityState === "visible" && run();
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [ready, materialize, touchActivity]);
+
   let page;
   if (!k.ready && !k.failed) page = <div className="k-boot" role="status" aria-label="Yükleniyor"><span className="k-spinner" /></div>;
   else if (k.failed) page = <div className="k-page"><EmptyState icon={<ArrowLeft size={30} />} title="Veriler açılamadı" text="Depolama erişilemiyor. Sayfayı yenile ya da tarayıcı ayarlarını kontrol et." /></div>;
   else if (tab === "harcamalar") page = <ExpensesPage selectedId={segs[1] || null} />;
   else if (tab === "analiz") page = <AnalysisPage />;
-  else if (tab === "daha-fazla") page = <MorePage section={segs[1] || null} />;
+  else if (tab === "daha-fazla") page = <MorePage section={segs[1] || null} id={segs[2] || null} />;
   else page = <HomePage />;
 
   const activeTab = TABS.some((t) => t.key === tab) ? tab : "";

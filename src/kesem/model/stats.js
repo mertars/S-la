@@ -1,21 +1,24 @@
 import { monthRange, startOfDay, trLower } from "./dates";
+import { baseOf } from "./money";
 
 // Para toplamları — işlem listesi zaten silinmişleri dışlar.
-export function totals(txs, [from, to] = [-Infinity, Infinity]) {
+export function totals(txs, [from, to] = [-Infinity, Infinity], rates) {
   let expense = 0;
   let income = 0;
   for (const t of txs) {
     if (t.occurredAt < from || t.occurredAt >= to) continue;
-    if (t.kind === "income") income += t.amountMinor;
-    else expense += t.amountMinor;
+    const v = baseOf(t, rates);
+    if (t.kind === "income") income += v;
+    else expense += v;
   }
   return { expense, income, net: income - expense };
 }
 
-export const monthTotals = (txs, ts) => totals(txs, monthRange(ts));
-export const dayTotals = (txs, ts) => {
+export const periodTotals = (txs, range, rates) => totals(txs, range, rates);
+export const monthTotals = (txs, ts, rates) => totals(txs, monthRange(ts), rates);
+export const dayTotals = (txs, ts, rates) => {
   const s = startOfDay(ts);
-  return totals(txs, [s, s + 86400000]);
+  return totals(txs, [s, s + 86400000], rates);
 };
 
 // "Sık yaptığın harcama" önerileri: son 120 günde ≥3 kez AYNI tutar+kategori+yer.
@@ -23,7 +26,7 @@ export function suggestShortcuts(txs, templates, dismissed = [], now = Date.now(
   const since = now - 120 * 86400000;
   const groups = new Map();
   for (const t of txs) {
-    if (t.kind !== "expense" || t.occurredAt < since) continue;
+    if (t.kind !== "expense" || t.occurredAt < since || t.installment || t.recurringId || t.split) continue; // otomatik/bölüşülen kayıtlar kısayol önerisi olmaz
     const key = [trLower(t.merchant || ""), t.categoryId, t.subcategoryId || "", t.amountMinor].join("|");
     const g = groups.get(key) || { key, count: 0, sample: t };
     g.count++;

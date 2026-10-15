@@ -70,3 +70,48 @@ export const fromDateInput = (s) => {
 };
 
 export const trLower = (s) => (s || "").toLocaleLowerCase("tr-TR");
+
+// ---- Parça 2: dönem (maaş günü), ay toplama, göreli gün ----
+export const addDays = (ts, n) => {
+  const d = new Date(ts);
+  d.setDate(d.getDate() + n);
+  return d.getTime();
+};
+// Ay ekle; gün, ANCAK başlangıç gününe göre kısaltılır (31 Oca → 28 Şub → 31 Mar).
+export const addMonthsClamped = (ts, n) => {
+  const d = new Date(ts);
+  const day = d.getDate();
+  const t = new Date(d.getFullYear(), d.getMonth() + n, 1, d.getHours(), d.getMinutes(), 0, 0);
+  const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+  t.setDate(Math.min(day, last));
+  return t.getTime();
+};
+export const daysBetween = (a, b) => Math.round((startOfDay(b) - startOfDay(a)) / 86400000);
+
+// Bütçe dönemi: ay başlangıç günü (1–28, maaş günü) → [başlangıç, bitiş).
+export function periodRange(ts, startDay = 1) {
+  const d = new Date(ts);
+  let y = d.getFullYear();
+  let m = d.getMonth();
+  if (d.getDate() < startDay) m -= 1;
+  return [new Date(y, m, startDay).getTime(), new Date(y, m + 1, startDay).getTime()];
+}
+export const shiftPeriod = (ts, delta, startDay = 1) => shiftMonth(periodRange(ts, startDay)[0], delta);
+export function periodLabel(ts, startDay = 1) {
+  if (startDay === 1) return monthLabel(ts);
+  const [from, to] = periodRange(ts, startDay);
+  const f = new Date(from);
+  const t = new Date(to - 86400000);
+  return `${f.getDate()} ${MONTHS[f.getMonth()].slice(0, 3)} – ${t.getDate()} ${MONTHS[t.getMonth()].slice(0, 3)}`;
+}
+export function relativeDayLabel(days) {
+  if (days === 0) return "Bugün";
+  if (days === 1) return "Yarın";
+  if (days > 1) return `${days} gün sonra`;
+  return `${-days} gün gecikti`;
+}
+export const shortDate = (ts) => {
+  const d = new Date(ts);
+  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
+};
+export const longMonthYear = (ts) => monthLabel(ts);

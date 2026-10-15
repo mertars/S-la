@@ -1,11 +1,24 @@
 import { useMemo, useState } from "react";
 import {
   CreditCard, Tags, Hash, Zap, Palette, Trash2, Settings, ChevronRight, Plus, RotateCcw, Download, CalendarClock, Landmark,
-  PiggyBank, Target, Layers, Coins, Lock,
+  PiggyBank, Target, Layers, Coins, Lock, Repeat, Gift, ShoppingBasket, Award,
 } from "lucide-react";
+import { AmountField, Ring, pct, STATE_LABEL } from "../ui/parts";
+import { useFinance } from "../state/derived";
+import BudgetPage from "./Budget";
+import GoalsPage from "./Goals";
+import DebtsPage from "./Debts";
+import RecurringPage from "./Recurring";
+import CalendarPage from "./Calendar";
+import WishesPage from "./Wishes";
+import ShoppingPage from "./Shopping";
+import BadgesPage from "./Badges";
+import { goalProjection, personBalances, installmentProgress } from "../model/finance";
+import { CURRENCIES, currencySymbol, CURRENCY_NAMES, formatRate } from "../model/money";
+import { relativeDayLabel } from "../model/dates";
 import PageHeader from "../ui/PageHeader";
 import TxRow from "../ui/TxRow";
-import { Bubble, Icon } from "../ui/icons";
+import { Bubble } from "../ui/icons";
 import { EmptyState, Segmented, UndoRedoButtons } from "../ui/common";
 import { AccountEditor, CategoryEditor, TagEditor } from "../ui/editors";
 import { useApp } from "../ui/appctx";
@@ -21,17 +34,10 @@ const SECTIONS = [
   { key: "kisayollar", icon: Zap, label: "Kısayollar ve şablonlar", desc: "Tek dokunuşla eklemeler" },
   { key: "gorunum", icon: Palette, label: "Görünüm", desc: "Tema ve renk paleti" },
   { key: "silinenler", icon: Trash2, label: "Son silinenler", desc: "Silinen kayıtları geri getir" },
+  { key: "kurlar", icon: Coins, label: "Para birimleri", desc: "₺, $, € ve manuel kur" },
   { key: "ayarlar", icon: Settings, label: "Ayarlar", desc: "Menü adı, yedek, depolama" },
 ];
 
-const SOON = [
-  [Layers, "Taksitler"],
-  [CalendarClock, "Tekrarlayan ödemeler"],
-  [Landmark, "Borç ve alacak"],
-  [Target, "Bütçe"],
-  [PiggyBank, "Birikim"],
-  [Coins, "Para birimleri"],
-];
 
 function CategoriesSection() {
   const k = useKesem();
@@ -261,7 +267,36 @@ function SettingsSection() {
   );
 }
 
-const BODY = { kategoriler: CategoriesSection, odeme: AccountsSection, etiketler: TagsSection, kisayollar: TemplatesSection, gorunum: AppearanceSection, silinenler: TrashSection, ayarlar: SettingsSection };
+function CurrenciesSection() {
+  const k = useKesem();
+  const enabled = k.enabledCurrencies;
+  const toggle = (c) => k.saveRates({ enabled: enabled.includes(c) ? enabled.filter((x) => x !== c) : [...enabled, c] });
+  const setRate = (c, minor) => k.saveRates({ rates: { ...k.rates, [c]: { rate: minor / 100, updatedAt: Date.now() } } });
+  return (
+    <>
+      <p className="k-hint" style={{ marginTop: 0 }}>Kurları sen girersin; internet gerekmez. Bir kayıt eklerken o günkü kur kayda yazılır, sonradan değişse de eski kayıtların ₺ karşılığı değişmez.</p>
+      <div className="k-card-list k-gap">
+        {CURRENCIES.map((c) => (
+          <div key={c} className="k-manage-row plain" style={{ flexWrap: "wrap" }}>
+            <span className="k-menu-icon" style={{ fontWeight: 800 }}>{currencySymbol(c)}</span>
+            <span>{c}<small>{CURRENCY_NAMES[c]}{c !== "TRY" && k.rates[c] ? ` · 1 ${currencySymbol(c)} = ${formatRate(k.rates[c].rate)} ₺` : ""}</small></span>
+            {c === "TRY" ? <em>Ana para birimi</em> : (
+              <button type="button" role="switch" aria-checked={enabled.includes(c)} aria-label={`${c} kullan`} className={`k-toggle ${enabled.includes(c) ? "on" : ""}`} onClick={() => toggle(c)}><i /></button>
+            )}
+          </div>
+        ))}
+      </div>
+      {CURRENCIES.filter((c) => c !== "TRY" && enabled.includes(c)).map((c) => (
+        <div key={c} className="k-gap">
+          <div className="k-label">1 {currencySymbol(c)} kaç ₺?</div>
+          <AmountField label={`${c} kuru`} value={Math.round((k.rates[c]?.rate || 0) * 100)} onChange={(v) => setRate(c, v)} placeholder="Kuru gir" />
+        </div>
+      ))}
+    </>
+  );
+}
+
+const BODY = { kurlar: CurrenciesSection, kategoriler: CategoriesSection, odeme: AccountsSection, etiketler: TagsSection, kisayollar: TemplatesSection, gorunum: AppearanceSection, silinenler: TrashSection, ayarlar: SettingsSection };
 
 function SectionPage({ section, onBack }) {
   const meta = SECTIONS.find((s) => s.key === section);
@@ -278,12 +313,68 @@ function SectionPage({ section, onBack }) {
   );
 }
 
-export default function MorePage({ section }) {
+const FEATURE = { butce: BudgetPage, birikimler: GoalsPage, borclar: DebtsPage, takvim: CalendarPage, istekler: WishesPage, alisveris: ShoppingPage, rozetler: BadgesPage };
+
+function Launcher({ section }) {
   const app = useApp();
   const k = useKesem();
+  const f = useFinance();
+  const st = f.status;
+  const goal0 = k.goals[0];
+  const bal = personBalances({ people: k.people, debts: k.debts, rates: k.rates });
+  const net = bal.reduce((s, b) => s + b.net, 0);
+  const next = f.planned.find((i) => i.kind !== "debt");
+  const leftPlans = k.installments.reduce((s, p) => s + installmentProgress(p).leftCount, 0);
+  const open = k.shopping.filter((i) => !i.doneAt).length;
+  const wishes = k.wishes.filter((w) => !w.boughtAt).length;
+  const go = (key) => app.navigate(`daha-fazla/${key}`, { replace: app.isTablet && !!section });
+  const Tile = ({ k: key, icon: I, label, sub, cls = "calm", size = "b-1x1", style }) => (
+    <button type="button" className={`k-card ${cls} ${size}`} style={style} onClick={() => go(key)}>
+      <span className="k-tile-ico"><I size={18} /></span>
+      <span style={{ minWidth: 0, width: "100%" }}>
+        <span className="k-tile-title" style={{ display: "block", fontSize: 14 }}>{label}</span>
+        <span className="k-tile-sub k-clamp2" style={{ display: "-webkit-box" }}>{sub}</span>
+      </span>
+    </button>
+  );
+  return (
+    <div className="k-bento-wrap">
+      <div className="k-bento">
+        <button type="button" className="k-card hero b-2x2" onClick={() => go("butce")} aria-label="Bütçe">
+          <div className="k-cap"><Target size={14} /> Bütçe</div>
+          {st.hasBudget ? (
+            <>
+              <Ring value={st.ratio} size={78} stroke={8} state={st.state} label={`Bütçenin ${pct(st.ratio)} kullanıldı`}><span style={{ fontSize: 14 }}>{pct(st.ratio)}</span></Ring>
+              <div><div className="k-num md">{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</div><div className="k-muted" style={{ fontSize: 12.5 }}>kaldı · {STATE_LABEL[st.state]}</div></div>
+            </>
+          ) : (<><div className="k-num md">Belirle</div><div className="k-muted" style={{ fontSize: 12.5 }}>Aylık bütçeni ve kategori limitlerini ayarla</div></>)}
+        </button>
+        <Tile k="birikimler" icon={PiggyBank} label="Birikimler" sub={goal0 ? `${goal0.name} · ${pct(goalProjection(goal0).pct)}` : "İlk kumbaranı aç"} cls="accent" />
+        <Tile k="borclar" icon={Landmark} label="Borçlar" sub={net === 0 ? "Hesap denk" : net > 0 ? `${formatMoney(net, "TRY", { hideZeroDecimals: true })} alacak` : `${formatMoney(-net, "TRY", { hideZeroDecimals: true })} borç`} />
+        <Tile k="abonelikler" icon={Repeat} label="Abonelikler" sub={`${k.recurrings.length} ödeme`} size="b-2x1" cls="accent" />
+        <Tile k="takvim" icon={CalendarClock} label="Takvim" sub={next ? `${next.title} · ${relativeDayLabel(next.days)}` : "Yaklaşan yok"} />
+        <Tile k="taksitler" icon={Layers} label="Taksitler" sub={`${leftPlans} taksit kaldı`} />
+        <Tile k="istekler" icon={Gift} label="İstekler" sub={`${wishes} ürün`} />
+        <Tile k="alisveris" icon={ShoppingBasket} label="Alışveriş" sub={`${open} ürün`} />
+        <Tile k="rozetler" icon={Award} label="Rozetler" sub={`${f.streak.current} gün seri`} size="b-3x1" style={{ "--wt": 3 }} />
+      </div>
+    </div>
+  );
+}
+
+export default function MorePage({ section, id }) {
+  const app = useApp();
+  const k = useKesem();
+  if (section === "abonelikler" || section === "taksitler") return <RecurringPage tab={section} id={id} />;
+  if (FEATURE[section]) {
+    const F = FEATURE[section];
+    return <F id={id} onBack={() => app.goBack("daha-fazla")} />;
+  }
   const menu = (
     <div className="k-page">
-      <PageHeader title="Daha Fazla" subtitle="Ayarlar ve yönetim" right={<UndoRedoButtons />} />
+      <PageHeader title="Daha Fazla" subtitle="Para yönetimi ve ayarlar" right={<UndoRedoButtons />} />
+      <Launcher section={section} />
+      <div className="k-section-title">Yönetim</div>
       <div className="k-card-list">
         {SECTIONS.map((s) => (
           <button key={s.key} type="button" className={`k-manage-row big ${section === s.key ? "active" : ""}`} onClick={() => app.navigate(`daha-fazla/${s.key}`, { replace: app.isTablet && !!section })}>
@@ -297,15 +388,6 @@ export default function MorePage({ section }) {
             {s.key === "silinenler" && k.deletedTransactions.length > 0 && <em>{k.deletedTransactions.length}</em>}
             <ChevronRight size={16} />
           </button>
-        ))}
-      </div>
-      <div className="k-label mt">Yakında</div>
-      <div className="k-soon-grid">
-        {SOON.map(([I, t]) => (
-          <div key={t} className="k-soon">
-            <I size={20} />
-            <span>{t}</span>
-          </div>
         ))}
       </div>
       <div className="k-page-end" />

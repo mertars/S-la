@@ -7,7 +7,8 @@
     "dev": "vite",
     "dev:full": "vercel dev",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:kesem": "esbuild src/kesem/model/finance.test.js --bundle --platform=node --format=esm --outfile=.kesem-test/finance.test.mjs --log-level=error && node --test .kesem-test/finance.test.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

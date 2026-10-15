@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { openKesemDb } from "../data/idb";
 import { DEFAULT_SETTINGS, EMPTY_TX_EXTRAS, SCHEMA_VERSION, DEFAULT_CURRENCY, uid } from "../model/schema";
 import { buildDefaultAccounts, buildDefaultCategories } from "../model/defaults";
-import { formatMoney } from "../model/money";
+import { formatMoney, rateOf } from "../model/money";
+import { dueGenerated, splitEqual, installmentRows, upcomingItems, occurrenceKey } from "../model/finance";
+import { dayKey } from "../model/dates";
 import { trLower } from "../model/dates";
 
 // Kesem durum yönetimi. Tüm veri bellekte tutulur (kişisel harcama hacmi için
@@ -19,18 +21,21 @@ export const useKesem = () => {
   return v;
 };
 
-const COLLECTIONS = ["transactions", "categories", "accounts", "tags", "templates"];
+const COLLECTIONS = ["transactions", "categories", "accounts", "tags", "templates", "installments", "recurrings", "people", "debts", "goals", "wishes", "shopping"];
+const META_IDS = ["budget", "rates", "activity"];
 const emptyCols = () => Object.fromEntries(COLLECTIONS.map((c) => [c, new Map()]));
-const initial = { status: "loading", persistent: true, cols: emptyCols(), settings: DEFAULT_SETTINGS };
+const initial = { status: "loading", persistent: true, cols: emptyCols(), settings: DEFAULT_SETTINGS, meta: {} };
 
 function applyToState(state, changes) {
   const cols = { ...state.cols };
   let settings = state.settings;
+  let meta = state.meta;
   const copied = new Set();
   for (const c of changes) {
     if (c.store === "blobs") continue;
     if (c.store === "meta") {
       if (c.id === "settings") settings = c.after ? { ...DEFAULT_SETTINGS, ...c.after } : DEFAULT_SETTINGS;
+      else if (META_IDS.includes(c.id)) meta = { ...meta, [c.id]: c.after || undefined };
       continue;
     }
     if (!cols[c.store]) continue;
@@ -41,7 +46,7 @@ function applyToState(state, changes) {
     if (c.after) cols[c.store].set(c.id, c.after);
     else cols[c.store].delete(c.id);
   }
-  return { ...state, cols, settings };
+  return { ...state, cols, settings, meta };
 }
 
 function reducer(state, a) {
@@ -49,7 +54,7 @@ function reducer(state, a) {
     case "LOAD": {
       const cols = emptyCols();
       for (const col of COLLECTIONS) for (const r of a.data[col] || []) cols[col].set(r.id, r);
-      return { status: "ready", persistent: a.persistent, cols, settings: { ...DEFAULT_SETTINGS, ...(a.settings || {}) } };
+      return { status: "ready", persistent: a.persistent, cols, settings: { ...DEFAULT_SETTINGS, ...(a.settings || {}) }, meta: a.meta || {} };
     }
     case "RESET":
       return initial;
@@ -104,17 +109,16 @@ export function KesemProvider({ userId, children }) {
           ];
           await db.apply(seed);
         }
-        const [transactions, categories, accounts, tags, templates, settings] = await Promise.all([
-          db.getAll("transactions"),
-          db.getAll("categories"),
-          db.getAll("accounts"),
-          db.getAll("tags"),
-          db.getAll("templates"),
-          db.get("meta", "settings"),
-        ]);
+        // v1 → v2: şema belgesini yükselt (yeni depolar upgrade'de açıldı, veri taşımaya gerek yok).
+        if (schema && schema.version < SCHEMA_VERSION) await db.apply([{ store: "meta", id: "schema", before: schema, after: { ...schema, version: SCHEMA_VERSION } }]);
+        const data = {};
+        await Promise.all(COLLECTIONS.map(async (c) => (data[c] = await db.getAll(c))));
+        const settings = await db.get("meta", "settings");
+        const meta = {};
+        await Promise.all(META_IDS.map(async (id) => (meta[id] = (await db.get("meta", id)) || undefined)));
         if (cancelled) return;
         stacks.current = { undo: [], redo: [] };
-        dispatch({ type: "LOAD", data: { transactions, categories, accounts, tags, templates }, settings, persistent: db.kind === "idb" });
+        dispatch({ type: "LOAD", data, settings, meta, persistent: db.kind === "idb" });
       } catch {
         if (!cancelled) dispatch({ type: "ERROR" });
       }
@@ -185,7 +189,23 @@ export function KesemProvider({ userId, children }) {
     const accounts = live(all(cols.accounts)).sort(byOrder);
     const tags = live(all(cols.tags)).sort((a, b) => a.name.localeCompare(b.name, "tr"));
     const templates = live(all(cols.templates)).sort(byOrder);
+    const byCreated = (a, b) => (a.createdAt || 0) - (b.createdAt || 0);
+    const rates = state.meta.rates?.rates || {};
     return {
+      installments: live(all(cols.installments)).sort(byCreated),
+      recurrings: live(all(cols.recurrings)).sort(byCreated),
+      people: live(all(cols.people)).sort((a, b) => a.name.localeCompare(b.name, "tr")),
+      debts: live(all(cols.debts)).sort(byCreated),
+      goals: live(all(cols.goals)).sort(byCreated),
+      wishes: live(all(cols.wishes)).sort(byCreated),
+      shopping: live(all(cols.shopping)).sort(byCreated),
+      budget: { monthlyMinor: 0, byCategory: {}, startDay: 1, includePlanned: true, ...(state.meta.budget || {}) },
+      rates,
+      enabledCurrencies: state.meta.rates?.enabled || ["TRY"],
+      activityDays: state.meta.activity?.days || [],
+      // Sabit kimlikli (g-...) üretilmiş işlem var mı? Silinmiş olsa bile "var" sayılır → yeniden doğmaz.
+      txExists: (key) => cols.transactions.has(key),
+      personById: (id) => cols.people.get(id) || null,
       transactions,
       deletedTransactions,
       categories,
@@ -228,6 +248,30 @@ export function KesemProvider({ userId, children }) {
     return { ids, changes };
   };
 
+  // Kişi çözümleme (ad → id, yoksa oluştur) — etiketlerle aynı kalıp.
+  const resolvePeople = (names, now) => {
+    const changes = [];
+    const ids = [];
+    const outNames = [];
+    const known = [...stateRef.current.cols.people.values()];
+    for (const raw of names || []) {
+      const name = raw.trim().slice(0, 28);
+      if (!name) continue;
+      const hit = known.find((p) => trLower(p.name) === trLower(name));
+      if (hit) {
+        if (hit.deletedAt) changes.push({ store: "people", id: hit.id, before: hit, after: { ...hit, deletedAt: null, updatedAt: now } });
+        ids.push(hit.id);
+      } else {
+        const p = { id: uid(), name, createdAt: now, updatedAt: now, deletedAt: null };
+        known.push(p);
+        changes.push({ store: "people", id: p.id, before: null, after: p });
+        ids.push(p.id);
+      }
+      outNames.push(name);
+    }
+    return { ids, changes, names: outNames };
+  };
+
   const receiptChange = (receipt, now) => {
     if (!receipt?.blob) return null;
     const id = uid();
@@ -246,11 +290,33 @@ export function KesemProvider({ userId, children }) {
       const now = Date.now();
       const tg = resolveTags(input.tagNames, now);
       const rc = receiptChange(input.receipt, now);
+      const currency = input.currency || DEFAULT_CURRENCY;
+      const rates = stateRef.current.meta.rates?.rates || {};
+      const fxRate = input.rate ?? rateOf(currency, rates) ?? 1;
+      // Bölüşme: amountMinor = BENİM payım; geri kalanı borç/alacak defterine yazılır.
+      let amountMinor = input.amountMinor;
+      let split = null;
+      const splitChanges = [];
+      if (input.split && input.split.names?.length) {
+        const ppl = resolvePeople(input.split.names, now);
+        splitChanges.push(...ppl.changes);
+        const n = ppl.ids.length + 1;
+        const paidByMe = input.split.paidBy === "me" || !input.split.paidBy;
+        const sh = splitEqual(input.amountMinor, n, paidByMe);
+        amountMinor = sh.myShare;
+        const payerId = paidByMe ? "me" : ppl.ids[Math.max(0, ppl.names.indexOf(input.split.paidBy))] || ppl.ids[0];
+        split = { totalMinor: input.amountMinor, n, paidBy: payerId, personIds: ppl.ids };
+        input.__splitDebts = paidByMe
+          ? ppl.ids.map((pid) => ({ personId: pid, direction: "lent", amountMinor: sh.otherShare }))
+          : [{ personId: payerId, direction: "borrowed", amountMinor: sh.myShare }];
+      }
+      const txId = input.id || uid();
       const tx = {
-        id: uid(),
+        id: txId,
         kind: input.kind,
-        amountMinor: input.amountMinor,
-        currency: input.currency || DEFAULT_CURRENCY,
+        amountMinor,
+        currency,
+        baseMinor: Math.round(amountMinor * fxRate),
         categoryId: input.categoryId || null,
         subcategoryId: input.subcategoryId || null,
         accountId: input.accountId || null,
@@ -261,11 +327,26 @@ export function KesemProvider({ userId, children }) {
         receiptId: rc ? rc.id : input.receiptId || null,
         templateId: input.templateId || null,
         ...EMPTY_TX_EXTRAS,
+        ...(input.extra || {}),
+        fx: currency === DEFAULT_CURRENCY ? null : { rate: fxRate, baseCurrency: DEFAULT_CURRENCY },
+        split,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
       };
-      const changes = [...tg.changes, ...(rc ? [rc.change] : []), { store: "transactions", id: tx.id, before: null, after: tx }];
+      for (const d of input.__splitDebts || []) {
+        const id = uid();
+        splitChanges.push({
+          store: "debts", id, before: null,
+          after: { id, personId: d.personId, direction: d.direction, amountMinor: d.amountMinor, paidMinor: 0, currency, rate: fxRate, dueAt: null, note: tx.merchant || (input.categoryId && stateRef.current.cols.categories.get(input.categoryId)?.name) || "Bölüşülen harcama", txId: tx.id, settledAt: null, createdAt: now, updatedAt: now, deletedAt: null },
+        });
+      }
+      // Bağlantılı kayıtlar (istek "alındı", alışveriş listesi "kaydedildi" …) — aynı işlemde.
+      for (const l of input.links || []) {
+        const cur = stateRef.current.cols[l.store]?.get(l.id);
+        if (cur) splitChanges.push({ store: l.store, id: l.id, before: cur, after: { ...cur, ...l.patch(tx), updatedAt: now } });
+      }
+      const changes = [...tg.changes, ...splitChanges, ...(rc ? [rc.change] : []), { store: "transactions", id: tx.id, before: null, after: tx }];
       if (input.templateId) {
         const tpl = stateRef.current.cols.templates.get(input.templateId);
         if (tpl) changes.push({ store: "templates", id: tpl.id, before: tpl, after: { ...tpl, useCount: (tpl.useCount || 0) + 1, lastUsedAt: now, updatedAt: now } });
@@ -274,7 +355,7 @@ export function KesemProvider({ userId, children }) {
       if (!ok) return null;
       if (!silent) {
         notify({
-          message: `${tx.kind === "income" ? "Gelir eklendi" : "Harcama eklendi"} · ${formatMoney(tx.kind === "income" ? tx.amountMinor : -tx.amountMinor, tx.currency)}`,
+          message: `${tx.kind === "income" ? "Gelir eklendi" : tx.split ? "Bölüşülen harcama eklendi" : "Harcama eklendi"} · ${formatMoney(tx.kind === "income" ? tx.amountMinor : -tx.amountMinor, tx.currency)}`,
           actionLabel: "Geri Al",
           action: "undo",
         });
@@ -299,10 +380,15 @@ export function KesemProvider({ userId, children }) {
         receiptId = rc.id;
         extra.push(rc.change);
       }
+      const currency = input.currency || before.currency || DEFAULT_CURRENCY;
+      const fxRate = input.rate ?? (currency === before.currency ? before.fx?.rate : null) ?? rateOf(currency, stateRef.current.meta.rates?.rates || {}) ?? 1;
       const after = {
         ...before,
         kind: input.kind,
         amountMinor: input.amountMinor,
+        currency,
+        baseMinor: Math.round(input.amountMinor * (currency === DEFAULT_CURRENCY ? 1 : fxRate)),
+        fx: currency === DEFAULT_CURRENCY ? null : { rate: fxRate, baseCurrency: DEFAULT_CURRENCY },
         categoryId: input.categoryId || null,
         subcategoryId: input.subcategoryId || null,
         accountId: input.accountId || null,
@@ -323,12 +409,16 @@ export function KesemProvider({ userId, children }) {
     [commit, notify] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // Bölüşülmüş bir harcama silinirse ona bağlı borç/alacak kayıtları da (aynı işlemde) silinir; geri alınca döner.
+  const linkedDebts = (txId) => [...stateRef.current.cols.debts.values()].filter((d) => d.txId === txId);
+
   const deleteTransaction = useCallback(
     async (id) => {
       const before = stateRef.current.cols.transactions.get(id);
       if (!before) return false;
       const now = Date.now();
-      const ok = await commit([{ store: "transactions", id, before, after: { ...before, deletedAt: now, updatedAt: now } }], { label: "silme" });
+      const debts = linkedDebts(id).filter((d) => !d.deletedAt).map((d) => ({ store: "debts", id: d.id, before: d, after: { ...d, deletedAt: now, updatedAt: now } }));
+      const ok = await commit([...debts, { store: "transactions", id, before, after: { ...before, deletedAt: now, updatedAt: now } }], { label: "silme" });
       if (ok) notify({ message: "Kayıt silindi", actionLabel: "Geri Al", action: "undo" });
       return ok;
     },
@@ -339,7 +429,9 @@ export function KesemProvider({ userId, children }) {
     async (id) => {
       const before = stateRef.current.cols.transactions.get(id);
       if (!before) return false;
-      const ok = await commit([{ store: "transactions", id, before, after: { ...before, deletedAt: null, updatedAt: Date.now() } }], { label: "geri yükleme" });
+      const now = Date.now();
+      const debts = linkedDebts(id).filter((d) => d.deletedAt).map((d) => ({ store: "debts", id: d.id, before: d, after: { ...d, deletedAt: null, updatedAt: now } }));
+      const ok = await commit([...debts, { store: "transactions", id, before, after: { ...before, deletedAt: null, updatedAt: now } }], { label: "geri yükleme" });
       if (ok) notify({ message: "Kayıt geri yüklendi" });
       return ok;
     },
@@ -433,6 +525,135 @@ export function KesemProvider({ userId, children }) {
     [addTransaction]
   );
 
+  // ---------------- Parça 2: para yönetimi eylemleri ----------------
+  const saveRecord = useCallback((store, rec, label) => upsert(store, { ...rec, id: rec.id || uid() }, label), [upsert]);
+  const removeRecord = useCallback((store, id, label) => softDelete(store, id, label), [softDelete]);
+
+  const saveMeta = useCallback(
+    (id, patch, label, defaults = {}) => {
+      const before = stateRef.current.meta[id] || null;
+      return commit([{ store: "meta", id, before, after: { ...defaults, ...(before || {}), ...patch, id } }], { label, undoable: !!label });
+    },
+    [commit]
+  );
+  const saveBudget = useCallback((patch) => saveMeta("budget", patch, "bütçe değişikliği", { monthlyMinor: 0, byCategory: {}, startDay: 1, includePlanned: true }), [saveMeta]);
+  const saveRates = useCallback((patch) => saveMeta("rates", patch, "kur değişikliği", { enabled: ["TRY"], rates: {} }), [saveMeta]);
+
+  // Açılışta: bugün "kayıt tuttuğun gün" olarak işaretlenir (harcamasız gün serisi için).
+  const touchActivity = useCallback(() => {
+    const key = dayKey(Date.now());
+    const cur = stateRef.current.meta.activity;
+    if (cur?.days?.includes(key)) return;
+    return saveMeta("activity", { days: [...(cur?.days || []), key].slice(-800) }, null, { days: [] });
+  }, [saveMeta]);
+
+  // Vadesi gelen taksit / otomatik abonelik kayıtlarını GERÇEK işleme çevirir (sabit kimlik → idempotent).
+  const materialize = useCallback(async () => {
+    const st = stateRef.current;
+    if (st.status !== "ready") return 0;
+    const cols = st.cols;
+    const live = (m) => [...m.values()].filter((r) => !r.deletedAt);
+    const due = dueGenerated({ installments: live(cols.installments), recurrings: live(cols.recurrings), now: Date.now(), exists: (k) => cols.transactions.has(k) });
+    if (!due.length) return 0;
+    const rates = st.meta.rates?.rates || {};
+    const now = Date.now();
+    const changes = due.map((d) => {
+      const src = d.type === "installment" ? d.plan : d.rule;
+      const currency = src.currency || DEFAULT_CURRENCY;
+      const amountMinor = d.type === "installment" ? d.amountMinor : src.amountMinor;
+      const fx = d.type === "installment" ? src.rate || 1 : rateOf(currency, rates) ?? 1;
+      const tx = {
+        id: d.key, kind: src.kind || "expense", amountMinor, currency, baseMinor: Math.round(amountMinor * fx),
+        categoryId: src.categoryId || null, subcategoryId: src.subcategoryId || null, accountId: src.accountId || null,
+        occurredAt: d.dateTs, merchant: src.merchant || src.title, note: d.type === "installment" ? `${d.index + 1}/${src.count}. taksit` : "",
+        tagIds: src.tagIds || [], receiptId: null, templateId: null, ...EMPTY_TX_EXTRAS,
+        installment: d.type === "installment" ? { planId: src.id, index: d.index, total: src.count } : null,
+        recurringId: d.type === "recurring" ? src.id : null,
+        fx: currency === DEFAULT_CURRENCY ? null : { rate: fx, baseCurrency: DEFAULT_CURRENCY },
+        split: null, createdAt: now, updatedAt: now, deletedAt: null,
+      };
+      return { store: "transactions", id: tx.id, before: null, after: tx };
+    });
+    await commit(changes, { undoable: false });
+    return changes.length;
+  }, [commit]);
+
+  // Taksitli alışveriş: plan + vadesi gelen (ilk) taksit aynı işlemde; geri alınabilir.
+  const createInstallmentPlan = useCallback(
+    async (input) => {
+      const now = Date.now();
+      const tg = resolveTags(input.tagNames, now);
+      const rates = stateRef.current.meta.rates?.rates || {};
+      const currency = input.currency || DEFAULT_CURRENCY;
+      const plan = {
+        id: uid(), title: (input.title || input.merchant || "Taksitli alışveriş").trim().slice(0, 40), totalMinor: input.totalMinor, currency,
+        rate: input.rate ?? rateOf(currency, rates) ?? 1, count: input.count, firstAt: input.firstAt ?? now,
+        categoryId: input.categoryId || null, subcategoryId: input.subcategoryId || null, accountId: input.accountId || null,
+        merchant: (input.merchant || "").trim(), note: (input.note || "").trim(), tagIds: tg.ids, stoppedAt: null,
+        kind: "expense", order: 0, createdAt: now, updatedAt: now, deletedAt: null,
+      };
+      const first = installmentRows(plan).filter((r) => r.dateTs <= now);
+      const txs = first.map((r) => ({
+        store: "transactions", id: r.key, before: null,
+        after: {
+          id: r.key, kind: "expense", amountMinor: r.amountMinor, currency, baseMinor: Math.round(r.amountMinor * plan.rate), categoryId: plan.categoryId, subcategoryId: plan.subcategoryId,
+          accountId: plan.accountId, occurredAt: r.dateTs, merchant: plan.merchant || plan.title, note: `${r.index + 1}/${plan.count}. taksit`, tagIds: plan.tagIds, receiptId: null, templateId: null,
+          ...EMPTY_TX_EXTRAS, installment: { planId: plan.id, index: r.index, total: plan.count }, fx: currency === DEFAULT_CURRENCY ? null : { rate: plan.rate, baseCurrency: DEFAULT_CURRENCY },
+          split: null, createdAt: now, updatedAt: now, deletedAt: null,
+        },
+      }));
+      const ok = await commit([...tg.changes, { store: "installments", id: plan.id, before: null, after: plan }, ...txs], { label: "taksitli alışveriş" });
+      if (ok) notify({ message: `${plan.count} taksit planlandı · ${formatMoney(plan.totalMinor, currency)}`, actionLabel: "Geri Al", action: "undo" });
+      return ok ? plan : null;
+    },
+    [commit, notify]
+  );
+
+  // Elle ödenen (fatura) kalemi "ödendi" yap: sabit kimlikli gerçek gider yazılır.
+  const payOccurrence = useCallback(
+    async (item) => {
+      const rule = stateRef.current.cols.recurrings.get(item.ruleId);
+      if (!rule) return null;
+      return addTransaction(
+        { id: occurrenceKey(rule.id, item.index), kind: rule.kind || "expense", amountMinor: item.amountMinor, currency: rule.currency, categoryId: rule.categoryId, subcategoryId: rule.subcategoryId, accountId: rule.accountId, merchant: rule.merchant || rule.title, tagIds: rule.tagIds || [], extra: { recurringId: rule.id } },
+        { label: `“${rule.title}” ödendi` }
+      );
+    },
+    [addTransaction]
+  );
+  const skipOccurrence = useCallback(
+    async (item) => {
+      const rule = stateRef.current.cols.recurrings.get(item.ruleId);
+      if (!rule) return false;
+      const ok = await commit([{ store: "recurrings", id: rule.id, before: rule, after: { ...rule, skipped: [...(rule.skipped || []), item.index], updatedAt: Date.now() } }], { label: "ödemeyi atlama" });
+      if (ok) notify({ message: `“${rule.title}” bu dönem atlandı`, actionLabel: "Geri Al", action: "undo" });
+      return ok;
+    },
+    [commit, notify]
+  );
+  // Planlı ödemeler (dönem sonuna kadar) — bütçe hesabında düşülür.
+  const plannedItems = useCallback(
+    (horizonDays = 45) => {
+      const cols = stateRef.current.cols;
+      const live = (m) => [...m.values()].filter((r) => !r.deletedAt);
+      return upcomingItems({ installments: live(cols.installments), recurrings: live(cols.recurrings), debts: live(cols.debts), people: live(cols.people), exists: (k) => cols.transactions.has(k), now: Date.now(), horizonDays, rates: stateRef.current.meta.rates?.rates || {} });
+    },
+    []
+  );
+
+  const settleDebt = useCallback(
+    async (id, paidMinor) => {
+      const d = stateRef.current.cols.debts.get(id);
+      if (!d) return false;
+      const now = Date.now();
+      const paid = Math.max(0, Math.min(d.amountMinor, paidMinor));
+      const ok = await commit([{ store: "debts", id, before: d, after: { ...d, paidMinor: paid, settledAt: paid >= d.amountMinor ? now : null, updatedAt: now } }], { label: paid >= d.amountMinor ? "ödendi işareti" : "kısmi ödeme" });
+      if (ok) notify({ message: paid >= d.amountMinor ? "Ödendi olarak işaretlendi" : "Ödeme kaydedildi", actionLabel: "Geri Al", action: "undo" });
+      return ok;
+    },
+    [commit, notify]
+  );
+
   const getBlob = useCallback(async (id) => (id && dbRef.current ? dbRef.current.get("blobs", id) : null), []);
 
   const value = useMemo(
@@ -467,8 +688,9 @@ export function KesemProvider({ userId, children }) {
       deleteTemplate,
       updateSettings,
       getBlob,
+      saveRecord, removeRecord, saveBudget, saveRates, touchActivity, materialize, createInstallmentPlan, payOccurrence, skipOccurrence, plannedItems, settleDebt,
     }),
-    [state, view, stackTick, toast, undo, redo, notify, dismissToast, addTransaction, updateTransaction, deleteTransaction, restoreTransaction, purgeTransaction, repeatTransaction, quickAdd, saveCategory, deleteCategory, saveAccount, deleteAccount, saveTag, deleteTag, saveTemplate, deleteTemplate, updateSettings, getBlob]
+    [state, view, stackTick, toast, undo, redo, notify, dismissToast, addTransaction, updateTransaction, deleteTransaction, restoreTransaction, purgeTransaction, repeatTransaction, quickAdd, saveCategory, deleteCategory, saveAccount, deleteAccount, saveTag, deleteTag, saveTemplate, deleteTemplate, updateSettings, getBlob, saveRecord, removeRecord, saveBudget, saveRates, touchActivity, materialize, createInstallmentPlan, payOccurrence, skipOccurrence, plannedItems, settleDebt]
   );
 
   return <KesemCtx.Provider value={value}>{children}</KesemCtx.Provider>;

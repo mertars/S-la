@@ -57,3 +57,30 @@ export function displayInput(str) {
   const [i, d] = str.split(",");
   return group(i || "0") + (str.includes(",") ? "," + (d ?? "") : "");
 }
+
+// ---- Parça 2: çoklu para birimi (manuel kur) ----
+export const BASE_CURRENCY = "TRY";
+export const CURRENCIES = ["TRY", "USD", "EUR"];
+export const CURRENCY_NAMES = { TRY: "Türk Lirası", USD: "ABD Doları", EUR: "Euro" };
+
+// rates: { USD: { rate: 34.5, updatedAt }, ... } — 1 birim = `rate` ₺. TRY her zaman 1.
+export const rateOf = (cur, rates) => (cur === BASE_CURRENCY ? 1 : rates?.[cur]?.rate > 0 ? rates[cur].rate : null);
+
+// minor (kuruş/cent) → hedef para birimi minor. Kur yoksa null.
+export function convertMinor(minor, from, to, rates) {
+  if (from === to) return minor;
+  const rf = rateOf(from, rates);
+  const rt = rateOf(to, rates);
+  if (!rf || !rt) return null;
+  return Math.round((minor * rf) / rt);
+}
+
+// Bir işlemin/kaydın ₺ karşılığı: önce kayıtlı `baseMinor`, yoksa TRY ise kendisi.
+export const baseOf = (rec, rates) => {
+  if (rec.baseMinor != null) return rec.baseMinor;
+  const c = rec.currency || BASE_CURRENCY;
+  if (c === BASE_CURRENCY) return rec.amountMinor;
+  return convertMinor(rec.amountMinor, c, BASE_CURRENCY, rates) ?? rec.amountMinor;
+};
+
+export const formatRate = (r) => (r ? new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(r) : "—");
