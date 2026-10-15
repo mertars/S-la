@@ -2,9 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { openKesemDb } from "../data/idb";
 import { DEFAULT_SETTINGS, EMPTY_TX_EXTRAS, SCHEMA_VERSION, DEFAULT_CURRENCY, uid } from "../model/schema";
 import { buildDefaultAccounts, buildDefaultCategories } from "../model/defaults";
-import { formatMoney, rateOf } from "../model/money";
+import { formatMoneyText, setMoneyMask, rateOf } from "../model/money";
 import { dueGenerated, splitEqual, installmentRows, upcomingItems, occurrenceKey } from "../model/finance";
 import { dayKey } from "../model/dates";
+import { COLLECTIONS as BACKUP_COLLECTIONS } from "../model/backup";
 import { trLower } from "../model/dates";
 
 // Kesem durum yönetimi. Tüm veri bellekte tutulur (kişisel harcama hacmi için
@@ -22,7 +23,7 @@ export const useKesem = () => {
 };
 
 const COLLECTIONS = ["transactions", "categories", "accounts", "tags", "templates", "installments", "recurrings", "people", "debts", "goals", "wishes", "shopping"];
-const META_IDS = ["budget", "rates", "activity"];
+const META_IDS = ["budget", "rates", "activity", "lock"];
 const emptyCols = () => Object.fromEntries(COLLECTIONS.map((c) => [c, new Map()]));
 const initial = { status: "loading", persistent: true, cols: emptyCols(), settings: DEFAULT_SETTINGS, meta: {} };
 
@@ -75,10 +76,14 @@ export function KesemProvider({ userId, children }) {
   const [state, dispatch] = useReducer(reducer, initial);
   const stateRef = useRef(state);
   stateRef.current = state;
+  // Gizlilik maskesi: metin bağlamlarındaki tutarlar (formatMoneyText) çocuklar RENDER OLMADAN önce doğru olsun diye
+  // senkron ayarlanır (efektte ayarlansa ilk boyamada maskesiz sızardı). Modül değişkeni, yan etkisi idempotent.
+  setMoneyMask(state.settings.privacy);
   const dbRef = useRef(null);
   const stacks = useRef({ undo: [], redo: [] });
   const [stackTick, setStackTick] = useState(0);
   const [toast, setToast] = useState(null);
+  const [resetKey, setResetKey] = useState(0);
 
   // --- Yükleme + ilk kurulum (varsayılanlar) ------------------------------
   useEffect(() => {
@@ -128,7 +133,7 @@ export function KesemProvider({ userId, children }) {
       dbRef.current?.close();
       dbRef.current = null;
     };
-  }, [userId]);
+  }, [userId, resetKey]);
 
   // --- Çekirdek: değişiklik kümesi uygula ---------------------------------
   const commit = useCallback(async (changes, { label, undoable = true } = {}) => {
@@ -140,6 +145,8 @@ export function KesemProvider({ userId, children }) {
       setToast({ id: uid(), message: "Kaydedilemedi. Depolama dolu olabilir.", tone: "error" });
       return false;
     }
+    // ref'i hemen güncelle: aynı tikte arka arkaya yazan eylemler (ör. kişi oluştur → borç yaz) bayat durumu okumasın
+    stateRef.current = reducer(stateRef.current, { type: "APPLY", changes });
     dispatch({ type: "APPLY", changes });
     if (undoable) {
       stacks.current.undo.push({ label, changes });
@@ -199,6 +206,7 @@ export function KesemProvider({ userId, children }) {
       goals: live(all(cols.goals)).sort(byCreated),
       wishes: live(all(cols.wishes)).sort(byCreated),
       shopping: live(all(cols.shopping)).sort(byCreated),
+      lock: state.meta.lock || { enabled: false },
       budget: { monthlyMinor: 0, byCategory: {}, startDay: 1, includePlanned: true, ...(state.meta.budget || {}) },
       rates,
       enabledCurrencies: state.meta.rates?.enabled || ["TRY"],
@@ -355,7 +363,7 @@ export function KesemProvider({ userId, children }) {
       if (!ok) return null;
       if (!silent) {
         notify({
-          message: `${tx.kind === "income" ? "Gelir eklendi" : tx.split ? "Bölüşülen harcama eklendi" : "Harcama eklendi"} · ${formatMoney(tx.kind === "income" ? tx.amountMinor : -tx.amountMinor, tx.currency)}`,
+          message: `${tx.kind === "income" ? "Gelir eklendi" : tx.split ? "Bölüşülen harcama eklendi" : "Harcama eklendi"} · ${formatMoneyText(tx.kind === "income" ? tx.amountMinor : -tx.amountMinor, tx.currency)}`,
           actionLabel: "Geri Al",
           action: "undo",
         });
@@ -603,7 +611,7 @@ export function KesemProvider({ userId, children }) {
         },
       }));
       const ok = await commit([...tg.changes, { store: "installments", id: plan.id, before: null, after: plan }, ...txs], { label: "taksitli alışveriş" });
-      if (ok) notify({ message: `${plan.count} taksit planlandı · ${formatMoney(plan.totalMinor, currency)}`, actionLabel: "Geri Al", action: "undo" });
+      if (ok) notify({ message: `${plan.count} taksit planlandı · ${formatMoneyText(plan.totalMinor, currency)}`, actionLabel: "Geri Al", action: "undo" });
       return ok ? plan : null;
     },
     [commit, notify]
@@ -654,6 +662,76 @@ export function KesemProvider({ userId, children }) {
     [commit, notify]
   );
 
+  // ---------------- Parça 3: kilit, yedek, tanışma ----------------
+  const saveLock = useCallback((patch) => saveMeta("lock", patch, null, { enabled: false, autoLock: 0, fails: 0, lockedUntil: 0, bio: null }), [saveMeta]);
+
+  const hideCategories = useCallback(
+    async (ids) => {
+      const cols = stateRef.current.cols;
+      const now = Date.now();
+      const set = new Set(ids);
+      const changes = [...cols.categories.values()].filter((c) => !c.deletedAt && (set.has(c.id) || set.has(c.parentId))).map((c) => ({ store: "categories", id: c.id, before: c, after: { ...c, deletedAt: now, updatedAt: now } }));
+      return commit(changes, { undoable: false });
+    },
+    [commit]
+  );
+
+  // Tüm veriyi (silinenler dahil) yedek için ver.
+  const exportData = useCallback(() => {
+    const st = stateRef.current;
+    const data = {};
+    for (const c of BACKUP_COLLECTIONS) data[c] = [...st.cols[c].values()];
+    return { data, meta: { budget: st.meta.budget, rates: st.meta.rates } };
+  }, []);
+  const getAllBlobs = useCallback(async () => (dbRef.current ? dbRef.current.getAll("blobs") : []), []);
+
+  // İçe aktar: 'merge' → yeni kayıtlar eklenir, çakışmada daha yeni olan kalır; 'replace' → mevcut her şey silinir.
+  // Tek değişiklik kümesi → ATOMİK ve geri alınabilir.
+  const importBackup = useCallback(
+    async (valid, mode, receiptBlobs = []) => {
+      const cols = stateRef.current.cols;
+      const changes = [];
+      const incomingIds = {};
+      for (const c of BACKUP_COLLECTIONS) incomingIds[c] = new Set(valid.data[c].map((r) => r.id));
+      if (mode === "replace") {
+        for (const c of BACKUP_COLLECTIONS) for (const r of cols[c].values()) if (!incomingIds[c].has(r.id)) changes.push({ store: c, id: r.id, before: r, after: null });
+      }
+      for (const c of BACKUP_COLLECTIONS) {
+        for (const r of valid.data[c]) {
+          const cur = cols[c].get(r.id) || null;
+          if (!cur) changes.push({ store: c, id: r.id, before: null, after: r });
+          else if (mode === "replace" || (r.updatedAt || 0) > (cur.updatedAt || 0)) changes.push({ store: c, id: r.id, before: cur, after: r });
+        }
+      }
+      for (const id of ["budget", "rates"]) {
+        if (valid.meta[id]) changes.push({ store: "meta", id, before: stateRef.current.meta[id] || null, after: { ...valid.meta[id], id } });
+      }
+      for (const b of receiptBlobs) changes.push({ store: "blobs", id: b.id, before: null, after: { id: b.id, blob: b.blob, type: b.blob.type, createdAt: Date.now() } });
+      if (!changes.length) return { ok: true, changed: 0 };
+      const ok = await commit(changes, { label: "içe aktarma" });
+      if (ok) notify({ message: `İçe aktarıldı · ${changes.length} değişiklik`, actionLabel: "Geri Al", action: "undo" });
+      return { ok, changed: changes.length };
+    },
+    [commit, notify]
+  );
+
+  // Tüm yerel veriyi (kilit dahil) siler ve modülü ilk kuruluma döndürür.
+  const wipeAll = useCallback(async () => {
+    const db = dbRef.current;
+    dbRef.current = null;
+    db?.close();
+    await new Promise((res) => {
+      try {
+        const r = indexedDB.deleteDatabase(`kesem-${userId || "misafir"}`);
+        r.onsuccess = r.onerror = r.onblocked = () => res();
+      } catch {
+        res();
+      }
+    });
+    stacks.current = { undo: [], redo: [] };
+    setResetKey((n) => n + 1);
+  }, [userId]);
+
   const getBlob = useCallback(async (id) => (id && dbRef.current ? dbRef.current.get("blobs", id) : null), []);
 
   const value = useMemo(
@@ -689,8 +767,9 @@ export function KesemProvider({ userId, children }) {
       updateSettings,
       getBlob,
       saveRecord, removeRecord, saveBudget, saveRates, touchActivity, materialize, createInstallmentPlan, payOccurrence, skipOccurrence, plannedItems, settleDebt,
+      saveLock, hideCategories, exportData, getAllBlobs, importBackup, wipeAll,
     }),
-    [state, view, stackTick, toast, undo, redo, notify, dismissToast, addTransaction, updateTransaction, deleteTransaction, restoreTransaction, purgeTransaction, repeatTransaction, quickAdd, saveCategory, deleteCategory, saveAccount, deleteAccount, saveTag, deleteTag, saveTemplate, deleteTemplate, updateSettings, getBlob, saveRecord, removeRecord, saveBudget, saveRates, touchActivity, materialize, createInstallmentPlan, payOccurrence, skipOccurrence, plannedItems, settleDebt]
+    [state, view, stackTick, toast, undo, redo, notify, dismissToast, addTransaction, updateTransaction, deleteTransaction, restoreTransaction, purgeTransaction, repeatTransaction, quickAdd, saveCategory, deleteCategory, saveAccount, deleteAccount, saveTag, deleteTag, saveTemplate, deleteTemplate, updateSettings, getBlob, saveRecord, removeRecord, saveBudget, saveRates, touchActivity, materialize, createInstallmentPlan, payOccurrence, skipOccurrence, plannedItems, settleDebt, saveLock, hideCategories, exportData, getAllBlobs, importBackup, wipeAll]
   );
 
   return <KesemCtx.Provider value={value}>{children}</KesemCtx.Provider>;

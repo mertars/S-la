@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Edit3, Receipt, Repeat, Search, Trash2, X, Zap } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Amt } from "../ui/Amt";
+import { ChevronLeft, ChevronRight, Copy, Edit3, Receipt, Repeat, Search, SlidersHorizontal, Trash2, X, Zap } from "lucide-react";
+import FilterSheet from "../ui/FilterSheet";
+import { applyFilter, activeFilterCount, emptyFilter, isGlobalScope } from "../model/filters";
 import PageHeader from "../ui/PageHeader";
 import TxRow from "../ui/TxRow";
 import { Bubble } from "../ui/icons";
@@ -7,9 +10,8 @@ import { EmptyState, Segmented, UndoRedoButtons } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { groupByDay, totals } from "../model/stats";
-import { formatMoney } from "../model/money";
-import { dayKey, dayLabel, fullDateTime, periodLabel, periodRange, shiftPeriod, trLower } from "../model/dates";
-import { useEffect } from "react";
+import { formatMoney, formatMoneyText } from "../model/money";
+import { dayKey, dayLabel, fullDateTime, periodLabel, periodRange, shiftPeriod, shortDate } from "../model/dates";
 
 const FILTERS = [
   { value: "all", label: "Tümü" },
@@ -58,10 +60,10 @@ export function TxDetail({ id, onBack }) {
   return (
     <div className="k-page">
       <PageHeader title={tx.merchant || sub?.name || cat.name} subtitle={fullDateTime(tx.occurredAt)} onBack={onBack} right={<UndoRedoButtons />} />
-      <section className="k-detail-hero" style={{ "--c": `var(--kc-${cat.color})` }}>
-        <Bubble icon={cat.icon} color={cat.color} size={60} />
-        <strong className={income ? "pos" : ""}>{formatMoney(income ? tx.amountMinor : -tx.amountMinor, tx.currency)}</strong>
-        <span>
+      <section className="k-card hero k-detail-card" style={{ "--c": `var(--kc-${cat.color})` }}>
+        <Bubble icon={cat.icon} color={cat.color} size={56} />
+        <strong className={`k-num xl ${income ? "k-state-ok" : ""}`}><Amt>{formatMoney(income ? tx.amountMinor : -tx.amountMinor, tx.currency)}</Amt></strong>
+        <span className="k-muted">
           {income ? "Gelir" : "Gider"} · {cat.name}
           {sub ? ` › ${sub.name}` : ""}
         </span>
@@ -148,89 +150,117 @@ export function TxDetail({ id, onBack }) {
   );
 }
 
+const DAY_CHUNK = 20; // kademeli yükleme: yüzlerce kayıtta liste akıcı kalır
+
 export default function ExpensesPage({ selectedId }) {
   const k = useKesem();
   const app = useApp();
+  const f = app.expFilter;
+  const setF = app.setExpFilter;
   const [monthTs, setMonthTs] = useState(Date.now());
-  const [filter, setFilter] = useState("all");
-  const [query, setQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [limit, setLimit] = useState(DAY_CHUNK);
   const startDay = k.budget.startDay;
   const range = periodRange(monthTs, startDay);
   const isNow = periodRange(Date.now(), startDay)[0] === range[0];
+  const global = isGlobalScope(f);
+  const nFilters = activeFilterCount({ ...f, query: "", kind: "all" });
 
   const list = useMemo(() => {
-    const q = trLower(query.trim());
-    return k.transactions.filter((t) => {
-      if (!q) {
-        if (t.occurredAt < range[0] || t.occurredAt >= range[1]) return false;
-      }
-      if (filter !== "all" && t.kind !== filter) return false;
-      if (!q) return true;
-      const hay = [t.merchant, t.note, k.catById(t.categoryId).name, t.subcategoryId && k.catById(t.subcategoryId).name, k.accById(t.accountId).name, ...(t.tagIds || []).map((i) => k.tagById(i)?.name)]
-        .filter(Boolean)
-        .map(trLower)
-        .join(" ");
-      return hay.includes(q);
-    });
-  }, [k.transactions, range[0], filter, query]); // eslint-disable-line react-hooks/exhaustive-deps
+    const base = global ? k.transactions : k.transactions.filter((t) => t.occurredAt >= range[0] && t.occurredAt < range[1]);
+    return applyFilter(base, f, { catName: (id) => k.catById(id).name, accName: (id) => k.accById(id).name, tagName: (id) => k.tagById(id)?.name, rates: k.rates });
+  }, [k.transactions, range[0], f, global, k.rates]); // eslint-disable-line react-hooks/exhaustive-deps
   const sums = useMemo(() => totals(list, undefined, k.rates), [list, k.rates]);
   const groups = useMemo(() => groupByDay(list, dayKey), [list]);
+  useEffect(() => setLimit(DAY_CHUNK), [list]);
+  const shown = groups.slice(0, limit);
+  const sentinel = useRef(null);
+  useEffect(() => {
+    if (!sentinel.current || limit >= groups.length || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((e) => e[0].isIntersecting && setLimit((l) => l + DAY_CHUNK), { rootMargin: "400px" });
+    io.observe(sentinel.current);
+    return () => io.disconnect();
+  }, [limit, groups.length]);
+
+  // Etkin filtre özet çipleri (× ile tek tek kaldırılır)
+  const money = (m) => formatMoneyText(m, "TRY", { hideZeroDecimals: true });
+  const chips = [];
+  if (f.min != null || f.max != null) chips.push({ key: "amt", label: f.min != null && f.max != null ? `${money(f.min)} – ${money(f.max)}` : f.min != null ? `≥ ${money(f.min)}` : `≤ ${money(f.max)}`, clear: { min: null, max: null } });
+  if (f.from != null || f.to != null) chips.push({ key: "date", label: `${f.from != null ? shortDate(f.from) : "…"} – ${f.to != null ? shortDate(f.to) : "…"}`, clear: { from: null, to: null } });
+  f.categoryIds.forEach((id) => chips.push({ key: "c" + id, label: k.catById(id).name, clear: { categoryIds: f.categoryIds.filter((x) => x !== id) } }));
+  f.accountIds.forEach((id) => chips.push({ key: "a" + id, label: k.accById(id).name, clear: { accountIds: f.accountIds.filter((x) => x !== id) } }));
+  f.tagIds.forEach((id) => chips.push({ key: "t" + id, label: "#" + (k.tagById(id)?.name || "?"), clear: { tagIds: f.tagIds.filter((x) => x !== id) } }));
 
   const master = (
     <div className="k-page">
-      <PageHeader title="Harcamalar" subtitle={query ? "Arama sonuçları (tüm aylar)" : periodLabel(monthTs, startDay)} right={<UndoRedoButtons />} />
-      <div className="k-toolbar">
-        <div className="k-month">
-          <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, -1, startDay))} aria-label="Önceki ay">
-            <ChevronLeft size={18} />
-          </button>
-          <button type="button" className="k-month-label" onClick={() => setMonthTs(Date.now())} disabled={isNow} aria-label="Bu aya dön">
-            {periodLabel(monthTs, startDay)}
-          </button>
-          <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, 1, startDay))} disabled={isNow} aria-label="Sonraki ay">
-            <ChevronRight size={18} />
+      <PageHeader title="Harcamalar" subtitle={global ? "Filtre sonuçları (tüm tarihler)" : periodLabel(monthTs, startDay)} right={<UndoRedoButtons />} />
+      <section className="k-card hero" aria-label="Liste özeti">
+        <div className="k-row-between" style={{ alignItems: "flex-end" }}>
+          <div>
+            <div className="k-cap">{f.kind === "income" ? "Toplam gelir" : "Toplam gider"}</div>
+            <div className="k-num xl"><Amt>{formatMoney(f.kind === "income" ? sums.income : sums.expense, "TRY", { hideZeroDecimals: true })}</Amt></div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="k-cap">{f.kind === "all" ? "Gelir" : "Kayıt"}</div>
+            <b className="k-num md">{f.kind === "all" ? <Amt>{formatMoney(sums.income, "TRY", { hideZeroDecimals: true })}</Amt> : list.length}</b>
+          </div>
+        </div>
+      </section>
+      <div className="k-toolbar k-gap">
+        {!global && (
+          <div className="k-month">
+            <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, -1, startDay))} aria-label="Önceki dönem"><ChevronLeft size={18} /></button>
+            <button type="button" className="k-month-label" onClick={() => setMonthTs(Date.now())} disabled={isNow} aria-label="Bu döneme dön">{periodLabel(monthTs, startDay)}</button>
+            <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, 1, startDay))} disabled={isNow} aria-label="Sonraki dönem"><ChevronRight size={18} /></button>
+          </div>
+        )}
+        <div className="k-row-between" style={{ gap: 8 }}>
+          <label className="k-search" style={{ flex: 1 }}>
+            <Search size={16} />
+            <input value={f.query} onChange={(e) => setF({ ...f, query: e.target.value })} placeholder="Ara: yer, not, kategori, etiket" aria-label="Ara" enterKeyHint="search" />
+            {f.query && <button type="button" className="k-clear" onClick={() => setF({ ...f, query: "" })} aria-label="Aramayı temizle"><X size={14} /></button>}
+          </label>
+          <button type="button" className={`k-icon-btn k-filter-btn ${nFilters ? "on" : ""}`} onClick={() => setFilterOpen(true)} aria-label={`Filtrele${nFilters ? `, ${nFilters} etkin` : ""}`}>
+            <SlidersHorizontal size={18} />{nFilters > 0 && <i>{nFilters}</i>}
           </button>
         </div>
-        <label className="k-search">
-          <Search size={16} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ara: yer, not, kategori, etiket" aria-label="Ara" />
-          {query && (
-            <button type="button" className="k-clear" onClick={() => setQuery("")} aria-label="Aramayı temizle">
-              <X size={14} />
-            </button>
-          )}
-        </label>
-        <Segmented value={filter} onChange={setFilter} options={FILTERS} label="Filtre" />
-      </div>
-      <div className="k-sum-strip">
-        <span>
-          Gider <b>{formatMoney(sums.expense)}</b>
-        </span>
-        <span>
-          Gelir <b className="pos">{formatMoney(sums.income)}</b>
-        </span>
+        <Segmented value={f.kind} onChange={(v) => setF({ ...f, kind: v })} options={FILTERS} label="Tür" />
+        {chips.length > 0 && (
+          <div className="k-chips wrap" aria-label="Etkin filtreler">
+            {chips.map((c) => <button key={c.key} type="button" className="k-chip sm on" onClick={() => setF({ ...f, ...c.clear })} aria-label={`${c.label} filtresini kaldır`}>{c.label}<X size={12} /></button>)}
+            <button type="button" className="k-chip sm" onClick={() => setF(emptyFilter())}>Tümünü temizle</button>
+          </div>
+        )}
       </div>
       {groups.length === 0 ? (
-        <EmptyState icon={<Receipt size={30} />} title={query ? "Sonuç bulunamadı" : "Bu ayda kayıt yok"} text={query ? "Farklı bir kelime dene." : "Yeni bir kayıt eklemek için + tuşuna dokun."} />
+        <EmptyState icon={<Receipt size={30} />} title={global ? "Sonuç bulunamadı" : "Bu dönemde kayıt yok"} text={global ? "Filtreleri gevşetmeyi ya da farklı bir kelime denemeyi dene." : "Yeni bir kayıt eklemek için + tuşuna dokun."} action={global ? <button type="button" className="k-btn tonal" onClick={() => setF(emptyFilter())}>Filtreleri temizle</button> : undefined} />
       ) : (
-        groups.map((g) => {
-          const dt = totals(g.items, undefined, k.rates);
-          return (
-            <section key={g.key} className="k-day" aria-label={dayLabel(g.ts)}>
-              <div className="k-day-head">
-                <h3>{dayLabel(g.ts)}</h3>
-                <span>{dt.expense ? formatMoney(-dt.expense) : formatMoney(dt.income, "TRY", { sign: true })}</span>
-              </div>
-              <div className="k-card-list">
-                {g.items.map((t) => (
-                  <TxRow key={t.id} tx={t} active={t.id === selectedId} onClick={() => app.navigate(`harcamalar/${t.id}`, { replace: app.isTablet && !!selectedId })} />
-                ))}
-              </div>
-            </section>
-          );
-        })
+        <>
+          {shown.map((g) => {
+            const dt = totals(g.items, undefined, k.rates);
+            return (
+              <section key={g.key} className="k-day" aria-label={dayLabel(g.ts)}>
+                <div className="k-day-head">
+                  <h3>{dayLabel(g.ts)}</h3>
+                  <span><Amt>{dt.expense ? formatMoney(-dt.expense) : formatMoney(dt.income, "TRY", { sign: true })}</Amt></span>
+                </div>
+                <div className="k-card-list">
+                  {g.items.map((t) => (
+                    <TxRow key={t.id} tx={t} active={t.id === selectedId} onClick={() => app.navigate(`harcamalar/${t.id}`, { replace: app.isTablet && !!selectedId })} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+          {limit < groups.length && (
+            <div ref={sentinel} style={{ textAlign: "center", padding: 12 }}>
+              <button type="button" className="k-btn tonal sm" onClick={() => setLimit((l) => l + DAY_CHUNK)}>Daha fazla göster ({groups.length - limit} gün)</button>
+            </div>
+          )}
+        </>
       )}
       <div className="k-page-end" />
+      {filterOpen && <FilterSheet value={f} onApply={(v) => setF(v)} onClose={() => setFilterOpen(false)} />}
     </div>
   );
 

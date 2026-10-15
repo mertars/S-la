@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { Amt } from "../ui/Amt";
 import { ArrowLeft, CalendarClock, Flame, Plus, Repeat, Sparkles, Wallet, X, Zap } from "lucide-react";
 import { Ring, STATE_LABEL, pct } from "../ui/parts";
 import { useFinance } from "../state/derived";
@@ -10,7 +11,7 @@ import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { periodTotals, suggestShortcuts } from "../model/stats";
 import { relativeDayLabel, startOfDay, periodRange, periodLabel } from "../model/dates";
-import { formatMoney } from "../model/money";
+import { formatMoney, formatMoneyText } from "../model/money";
 import { STARTER_IDEAS } from "../model/defaults";
 
 // Uzun bas → tutarı değiştirerek ekle; kısa dokun → anında ekle.
@@ -57,10 +58,10 @@ function QuickChip({ tpl }) {
     }
   );
   return (
-    <button type="button" className="k-quick" style={{ "--c": `var(--kc-${cat.color})` }} {...press} aria-label={`${tpl.name}${tpl.amountMinor ? ", " + formatMoney(tpl.amountMinor) : ""} ekle`}>
+    <button type="button" className="k-quick" style={{ "--c": `var(--kc-${cat.color})` }} {...press} aria-label={`${tpl.name}${tpl.amountMinor ? ", " + formatMoneyText(tpl.amountMinor) : ""} ekle`}>
       <Bubble icon={cat.icon} color={cat.color} size={34} />
       <span className="k-quick-name">{tpl.name}</span>
-      <span className="k-quick-amt">{tpl.amountMinor ? formatMoney(tpl.amountMinor, tpl.currency, { hideZeroDecimals: true }) : "Tutar gir"}</span>
+      <span className="k-quick-amt">{tpl.amountMinor ? <Amt>{formatMoney(tpl.amountMinor, tpl.currency, { hideZeroDecimals: true })}</Amt> : "Tutar gir"}</span>
     </button>
   );
 }
@@ -113,9 +114,9 @@ export default function HomePage() {
               </div>
               <div className="k-row-between" style={{ gap: 14 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div className={`k-num xl ${st.todayLeft < 0 ? "k-state-over" : ""}`}>{formatMoney(Math.max(st.todayLeft, st.todayLeft < 0 ? st.todayLeft : 0), "TRY", { hideZeroDecimals: true })}</div>
+                  <div className={`k-num xl ${st.todayLeft < 0 ? "k-state-over" : ""}`}><Amt>{formatMoney(Math.max(st.todayLeft, st.todayLeft < 0 ? st.todayLeft : 0), "TRY", { hideZeroDecimals: true })}</Amt></div>
                   <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>
-                    Günlük pay {formatMoney(st.allowance, "TRY", { hideZeroDecimals: true })} · bugün {formatMoney(st.spentToday, "TRY", { hideZeroDecimals: true })} harcandı
+                    Günlük pay <Amt>{formatMoney(st.allowance, "TRY", { hideZeroDecimals: true })}</Amt> · bugün <Amt>{formatMoney(st.spentToday, "TRY", { hideZeroDecimals: true })}</Amt> harcandı
                   </div>
                 </div>
                 <Ring value={st.ratio} size={74} stroke={8} state={st.state} label={`Bütçenin ${pct(st.ratio)} kullanıldı`}>
@@ -123,22 +124,22 @@ export default function HomePage() {
                 </Ring>
               </div>
               <div className="k-hero-row2">
-                <div><span>Kalan bütçe</span><b className={st.free < 0 ? "k-state-over" : ""}>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</b></div>
+                <div><span>Kalan bütçe</span><b className={st.free < 0 ? "k-state-over" : ""}><Amt>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
                 <div><span>Kalan gün</span><b>{st.daysLeft}</b></div>
-                <div><span>Planlı ödeme</span><b>{formatMoney(st.committed, "TRY", { hideZeroDecimals: true })}</b></div>
+                <div><span>Planlı ödeme</span><b><Amt>{formatMoney(st.committed, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
               </div>
             </section>
           ) : (
             <section className="k-card hero b-3x1" style={{ "--wt": 4, "--ht": 2 }} aria-label="Dönem özeti">
               <div className="k-cap">Bu dönem harcanan</div>
-              <div className="k-num xl">{formatMoney(month.expense, "TRY", { hideZeroDecimals: true })}</div>
+              <div className="k-num xl"><Amt>{formatMoney(month.expense, "TRY", { hideZeroDecimals: true })}</Amt></div>
               <div className="k-muted" style={{ fontSize: 13.5 }}>Bir bütçe belirlersen her gün ne kadar harcayabileceğini hesaplarım.</div>
               <button type="button" className="k-btn primary" onClick={() => app.navigate("daha-fazla/butce")}>Bütçe belirle</button>
             </section>
           )}
           <div className="k-card calm b-1x1">
             <div className="k-cap">Bugün</div>
-            <b className="k-num md">{formatMoney(today.expense, "TRY", { hideZeroDecimals: true })}</b>
+            <b className="k-num md"><Amt>{formatMoney(today.expense, "TRY", { hideZeroDecimals: true })}</Amt></b>
             <span className="k-tile-sub">harcandı</span>
           </div>
           <button type="button" className="k-card accent b-2x2" style={{ "--wt": 2 }} onClick={() => app.navigate("daha-fazla/takvim")} aria-label="Yaklaşan ödemeler">
@@ -151,7 +152,7 @@ export default function HomePage() {
                       <span className="k-ellip" style={{ display: "block", fontWeight: 650, fontSize: 13.5 }}>{u.title}</span>
                       <span className={`k-tile-sub ${u.status === "overdue" ? "k-state-over" : u.status === "soon" || u.status === "today" ? "k-state-near" : ""}`} style={u.status !== "later" ? { fontWeight: 700 } : {}}>{relativeDayLabel(u.days)}</span>
                     </span>
-                    <b style={{ fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>{formatMoney(u.amountMinor, u.currency, { hideZeroDecimals: true })}</b>
+                    <b style={{ fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}><Amt>{formatMoney(u.amountMinor, u.currency, { hideZeroDecimals: true })}</Amt></b>
                   </div>
                 ))}
               </div>
@@ -159,7 +160,7 @@ export default function HomePage() {
           </button>
           <div className="k-card calm b-1x1">
             <div className="k-cap">Gelir</div>
-            <b className="k-num md pos">{formatMoney(month.income, "TRY", { hideZeroDecimals: true })}</b>
+            <b className="k-num md pos"><Amt>{formatMoney(month.income, "TRY", { hideZeroDecimals: true })}</Amt></b>
             <span className="k-tile-sub">bu dönem</span>
           </div>
           <button type="button" className="k-card calm b-3x1" style={{ "--wt": 2 }} onClick={() => app.navigate("daha-fazla/rozetler")} aria-label="Harcamasız gün serisi">
@@ -203,7 +204,7 @@ export default function HomePage() {
             <div key={g.key} className="k-suggest-card">
               <Sparkles size={16} />
               <button type="button" onClick={() => shortcutFrom(g)}>
-                <b>{label}</b> {g.count} kez {formatMoney(t.amountMinor)} girdin — kısayol yap?
+                <b>{label}</b> {g.count} kez <Amt>{formatMoney(t.amountMinor)}</Amt> girdin — kısayol yap?
               </button>
               <button type="button" className="k-icon-btn sm" aria-label="Önerme" onClick={() => k.updateSettings({ dismissedSuggestions: [...settings.dismissedSuggestions, g.key] })}>
                 <X size={14} />
@@ -219,7 +220,7 @@ export default function HomePage() {
           <span className="k-repeat-text">
             <small>Son {lastAdded.kind === "income" ? "gelir" : "harcama"}</small>
             <b>
-              {lastAdded.merchant || k.catById(lastAdded.categoryId).name} · {formatMoney(lastAdded.amountMinor)}
+              {lastAdded.merchant || k.catById(lastAdded.categoryId).name} · <Amt>{formatMoney(lastAdded.amountMinor)}</Amt>
             </b>
           </span>
           <button type="button" className="k-btn tonal sm" onClick={() => k.repeatTransaction(lastAdded)}>

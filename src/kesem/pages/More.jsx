@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { Amt } from "../ui/Amt";
 import {
-  CreditCard, Tags, Hash, Zap, Palette, Trash2, Settings, ChevronRight, Plus, RotateCcw, Download, CalendarClock, Landmark,
-  PiggyBank, Target, Layers, Coins, Lock, Repeat, Gift, ShoppingBasket, Award,
+  CreditCard, Tags, Hash, Zap, Trash2, Settings, ChevronRight, Plus, RotateCcw, CalendarClock, Landmark,
+  PiggyBank, Target, Layers, Coins, Repeat, Gift, ShoppingBasket, Award,
 } from "lucide-react";
 import { AmountField, Ring, pct, STATE_LABEL } from "../ui/parts";
 import { useFinance } from "../state/derived";
@@ -14,7 +15,7 @@ import WishesPage from "./Wishes";
 import ShoppingPage from "./Shopping";
 import BadgesPage from "./Badges";
 import { goalProjection, personBalances, installmentProgress } from "../model/finance";
-import { CURRENCIES, currencySymbol, CURRENCY_NAMES, formatRate } from "../model/money";
+import { CURRENCIES, currencySymbol, CURRENCY_NAMES, formatRate, formatMoneyText } from "../model/money";
 import { relativeDayLabel } from "../model/dates";
 import PageHeader from "../ui/PageHeader";
 import TxRow from "../ui/TxRow";
@@ -23,19 +24,18 @@ import { EmptyState, Segmented, UndoRedoButtons } from "../ui/common";
 import { AccountEditor, CategoryEditor, TagEditor } from "../ui/editors";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
-import { KESEM_DEFAULT_MENU_LABEL, setMenuLabel } from "../config";
 import { formatMoney } from "../model/money";
-import { PALETTES } from "../ui/palettes";
+import SettingsSection from "./Settings";
+import { HeroStat } from "../ui/parts";
 
 const SECTIONS = [
   { key: "kategoriler", icon: Tags, label: "Kategoriler", desc: "Kategori ve alt kategorilerini düzenle" },
   { key: "odeme", icon: CreditCard, label: "Ödeme yöntemleri", desc: "Nakit, kartların" },
   { key: "etiketler", icon: Hash, label: "Etiketler", desc: "Kayıtlarını etiketle" },
   { key: "kisayollar", icon: Zap, label: "Kısayollar ve şablonlar", desc: "Tek dokunuşla eklemeler" },
-  { key: "gorunum", icon: Palette, label: "Görünüm", desc: "Tema ve renk paleti" },
   { key: "silinenler", icon: Trash2, label: "Son silinenler", desc: "Silinen kayıtları geri getir" },
   { key: "kurlar", icon: Coins, label: "Para birimleri", desc: "₺, $, € ve manuel kur" },
-  { key: "ayarlar", icon: Settings, label: "Ayarlar", desc: "Menü adı, yedek, depolama" },
+  { key: "ayarlar", icon: Settings, label: "Ayarlar", desc: "Görünüm, gizlilik, kilit, yedek, menü adı" },
 ];
 
 
@@ -147,7 +147,7 @@ function TemplatesSection() {
                   <span>
                     {t.name}
                     <small>
-                      {t.amountMinor ? formatMoney(t.amountMinor, t.currency) : "Tutar her seferinde sorulur"} · {t.useCount || 0} kullanım
+                      {t.amountMinor ? <Amt>{formatMoney(t.amountMinor, t.currency)}</Amt> : "Tutar her seferinde sorulur"} · {t.useCount || 0} kullanım
                     </small>
                   </span>
                 </button>
@@ -164,31 +164,6 @@ function TemplatesSection() {
       <button type="button" className="k-btn tonal full mt" onClick={() => app.openTemplate({})}>
         <Plus size={17} /> Yeni kısayol
       </button>
-    </>
-  );
-}
-
-function AppearanceSection() {
-  const k = useKesem();
-  const { settings } = k;
-  return (
-    <>
-      <div className="k-label">Görünüm</div>
-      <Segmented
-        value={settings.mode}
-        onChange={(v) => k.updateSettings({ mode: v })}
-        options={[{ value: "auto", label: "Routinix gibi" }, { value: "light", label: "Açık" }, { value: "dark", label: "Koyu" }]}
-        label="Görünüm modu"
-      />
-      <div className="k-label mt">Renk paleti</div>
-      <div className="k-palettes">
-        {PALETTES.map((p) => (
-          <button key={p.key} type="button" aria-pressed={settings.palette === p.key} className={`k-palette ${settings.palette === p.key ? "on" : ""}`} data-k-palette={p.key} onClick={() => k.updateSettings({ palette: p.key })}>
-            <span className="k-palette-swatch" />
-            <b>{p.name}</b>
-          </button>
-        ))}
-      </div>
     </>
   );
 }
@@ -213,57 +188,6 @@ function TrashSection() {
         </div>
       ))}
     </div>
-  );
-}
-
-function SettingsSection() {
-  const k = useKesem();
-  const app = useApp();
-  const [label, setLabel] = useState(app.menuLabel);
-  const exportJson = () => {
-    const data = {
-      uygulama: "Routinix Harcama Takibi",
-      surum: 1,
-      tarih: new Date().toISOString(),
-      islemler: k.transactions.concat(k.deletedTransactions),
-      kategoriler: k.categories,
-      odemeYontemleri: k.accounts,
-      etiketler: k.tags,
-      kisayollar: k.templates,
-    };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `harcama-yedek-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  };
-  return (
-    <>
-      <div className="k-label">Hamburger menüdeki ad</div>
-      <div className="k-inline-form">
-        <input className="k-input" value={label} maxLength={28} onChange={(e) => setLabel(e.target.value)} aria-label="Menü adı" placeholder={KESEM_DEFAULT_MENU_LABEL} />
-        <button type="button" className="k-btn primary" onClick={() => { setMenuLabel(label); k.notify({ message: "Menü adı güncellendi" }); }}>
-          Kaydet
-        </button>
-      </div>
-      <p className="k-hint">Boş bırakıp kaydedersen “{KESEM_DEFAULT_MENU_LABEL}” olur.</p>
-
-      <div className="k-label mt">Veriler</div>
-      <div className="k-note-card">
-        <Lock size={18} />
-        <p>
-          Kayıtların yalnızca bu cihazda, hesabına özel olarak saklanır ve internet olmadan da çalışır.{" "}
-          {k.persistent ? "" : "Dikkat: Bu tarayıcı kalıcı depolamaya izin vermiyor; sekmeyi kapatınca veriler silinir."}
-        </p>
-      </div>
-      <button type="button" className="k-btn tonal full" onClick={exportJson}>
-        <Download size={17} /> Yedeği indir (JSON)
-      </button>
-      <p className="k-hint">Fiş fotoğrafları yedeğe dahil değildir.</p>
-    </>
   );
 }
 
@@ -296,15 +220,29 @@ function CurrenciesSection() {
   );
 }
 
-const BODY = { kurlar: CurrenciesSection, kategoriler: CategoriesSection, odeme: AccountsSection, etiketler: TagsSection, kisayollar: TemplatesSection, gorunum: AppearanceSection, silinenler: TrashSection, ayarlar: SettingsSection };
+function sectionHero(section, k) {
+  switch (section) {
+    case "kategoriler": return { cap: "Kategoriler", value: k.topCategories("expense").length, sub: `gider kategorisi · ${k.topCategories("income").length} gelir kategorisi` };
+    case "odeme": return { cap: "Ödeme yöntemleri", value: k.accounts.length, sub: k.accounts.filter((a) => a.type === "card").length + " kart · " + k.accounts.filter((a) => a.type === "cash").length + " nakit" };
+    case "etiketler": return { cap: "Etiketler", value: k.tags.length, sub: "kayıtlarını gruplamak için" };
+    case "kisayollar": return { cap: "Kısayollar", value: k.templates.length, sub: `${k.templates.filter((t) => t.quick).length} tanesi ana sayfada · ${k.templates.reduce((s, t) => s + (t.useCount || 0), 0)} kez kullanıldı` };
+    case "kurlar": return { cap: "Kullanılan para birimleri", value: k.enabledCurrencies.join(" · "), sub: "Kurlar elle girilir" };
+    case "silinenler": return { cap: "Son silinenler", value: k.deletedTransactions.length, sub: "geri getirilebilir kayıt" };
+    default: return { cap: "Gizlilik ve güvenlik", value: k.lock.enabled ? "Kilit açık" : "Kilit kapalı", sub: `Gizlilik modu ${k.settings.privacy ? "açık" : "kapalı"} · veriler bu cihazda` };
+  }
+}
+
+const BODY = { kurlar: CurrenciesSection, kategoriler: CategoriesSection, odeme: AccountsSection, etiketler: TagsSection, kisayollar: TemplatesSection, gorunum: SettingsSection, silinenler: TrashSection, ayarlar: SettingsSection };
 
 function SectionPage({ section, onBack }) {
-  const meta = SECTIONS.find((s) => s.key === section);
+  const k = useKesem();
+  const meta = SECTIONS.find((s) => s.key === section) || (section === "kurlar" ? { label: "Para birimleri", desc: "₺, $, € ve manuel kur" } : section === "gorunum" ? SECTIONS.find((s) => s.key === "ayarlar") : null);
   const Body = BODY[section];
   if (!meta || !Body) return null;
   return (
     <div className="k-page">
       <PageHeader title={meta.label} subtitle={meta.desc} onBack={onBack} right={<UndoRedoButtons />} />
+      <HeroStat {...sectionHero(section, k)} />
       <div className="k-section-body">
         <Body />
       </div>
@@ -345,12 +283,12 @@ function Launcher({ section }) {
           {st.hasBudget ? (
             <>
               <Ring value={st.ratio} size={78} stroke={8} state={st.state} label={`Bütçenin ${pct(st.ratio)} kullanıldı`}><span style={{ fontSize: 14 }}>{pct(st.ratio)}</span></Ring>
-              <div><div className="k-num md">{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</div><div className="k-muted" style={{ fontSize: 12.5 }}>kaldı · {STATE_LABEL[st.state]}</div></div>
+              <div><div className="k-num md"><Amt>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</Amt></div><div className="k-muted" style={{ fontSize: 12.5 }}>kaldı · {STATE_LABEL[st.state]}</div></div>
             </>
           ) : (<><div className="k-num md">Belirle</div><div className="k-muted" style={{ fontSize: 12.5 }}>Aylık bütçeni ve kategori limitlerini ayarla</div></>)}
         </button>
         <Tile k="birikimler" icon={PiggyBank} label="Birikimler" sub={goal0 ? `${goal0.name} · ${pct(goalProjection(goal0).pct)}` : "İlk kumbaranı aç"} cls="accent" />
-        <Tile k="borclar" icon={Landmark} label="Borçlar" sub={net === 0 ? "Hesap denk" : net > 0 ? `${formatMoney(net, "TRY", { hideZeroDecimals: true })} alacak` : `${formatMoney(-net, "TRY", { hideZeroDecimals: true })} borç`} />
+        <Tile k="borclar" icon={Landmark} label="Borçlar" sub={net === 0 ? "Hesap denk" : net > 0 ? `${formatMoneyText(net, "TRY", { hideZeroDecimals: true })} alacak` : `${formatMoneyText(-net, "TRY", { hideZeroDecimals: true })} borç`} />
         <Tile k="abonelikler" icon={Repeat} label="Abonelikler" sub={`${k.recurrings.length} ödeme`} size="b-2x1" cls="accent" />
         <Tile k="takvim" icon={CalendarClock} label="Takvim" sub={next ? `${next.title} · ${relativeDayLabel(next.days)}` : "Yaklaşan yok"} />
         <Tile k="taksitler" icon={Layers} label="Taksitler" sub={`${leftPlans} taksit kaldı`} />

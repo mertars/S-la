@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Amt } from "./Amt";
 import { Camera, Clock, Plus, Trash2, X, Zap, Store, StickyNote, Hash, Layers, Users } from "lucide-react";
 import Sheet from "./Sheet";
 import NumPad from "./NumPad";
@@ -342,7 +343,7 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
                 </div>
               )}
               {foreign && rateMinor > 0 && amountMinor > 0 && (
-                <p className="k-hint" style={{ margin: 0 }}>≈ {formatMoney(Math.round(amountMinor * fxRate))} · kur {formatRate(fxRate)} ₺</p>
+                <p className="k-hint" style={{ margin: 0 }}>≈ <Amt>{formatMoney(Math.round(amountMinor * fxRate))}</Amt> · kur {formatRate(fxRate)} ₺</p>
               )}
               {foreign && rateMinor === 0 && <p className="k-error" style={{ margin: 0 }}>Bu para birimi için kuru girmelisin.</p>}
             </div>
@@ -536,13 +537,13 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
                           const sh = splitEqual(amountMinor, splitList.length + 1, paidBy === "me");
                           return (
                             <div style={{ marginTop: 12 }}>
-                              <div className="k-split-row"><span className="k-muted">Senin payın</span><b>{formatMoney(sh.myShare, currency)}</b></div>
+                              <div className="k-split-row"><span className="k-muted">Senin payın</span><b><Amt>{formatMoney(sh.myShare, currency)}</Amt></b></div>
                               {paidBy === "me" ? (
                                 splitList.map((n) => (
-                                  <div key={n} className="k-split-row"><span>{n} sana borçlu</span><b>{formatMoney(sh.otherShare, currency)}</b></div>
+                                  <div key={n} className="k-split-row"><span>{n} sana borçlu</span><b><Amt>{formatMoney(sh.otherShare, currency)}</Amt></b></div>
                                 ))
                               ) : (
-                                <div className="k-split-row"><span>{paidBy}'e borçlusun</span><b>{formatMoney(sh.myShare, currency)}</b></div>
+                                <div className="k-split-row"><span>{paidBy}'e borçlusun</span><b><Amt>{formatMoney(sh.myShare, currency)}</Amt></b></div>
                               )}
                             </div>
                           );

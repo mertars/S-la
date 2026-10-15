@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 // Alt sayfa (bottom sheet). Telefonda ekranın altından yükselir; tablette
@@ -39,13 +40,47 @@ export default function Sheet({ open, onClose, title, children, footer, tall = f
     sheetStack.push(token);
     ensurePopListener();
     window.history.pushState({ kesemSheet: token.id, depth: window.history.state?.depth ?? 0 }, "");
-    const onKey = (e) => e.key === "Escape" && sheetStack[sheetStack.length - 1] === token && closeRef.current?.();
+    const prevFocus = document.activeElement;
+    const onKey = (e) => {
+      if (sheetStack[sheetStack.length - 1] !== token) return;
+      if (e.key === "Escape") return closeRef.current?.();
+      if (e.key !== "Tab" || !ref.current) return;
+      // odak tuzağı: Tab sayfanın içinde döner
+      const f = [...ref.current.querySelectorAll('button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), textarea, select, [tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    // Klavye: görsel görünüm alanına göre katman yüksekliği (iOS'ta klavye alanı örtmesin) + odaktaki alanı göster
+    const vv = window.visualViewport;
+    const rootEl = document.querySelector(".kesem-root");
+    const applyVV = () => {
+      if (!vv || !rootEl) return;
+      rootEl.style.setProperty("--k-vvh", `${vv.height}px`);
+      rootEl.style.setProperty("--k-vvt", `${vv.offsetTop}px`);
+    };
+    const onFocusIn = (e) => {
+      const el = e.target;
+      if (ref.current?.contains(el) && /^(INPUT|TEXTAREA)$/.test(el.tagName)) setTimeout(() => el.scrollIntoView?.({ block: "center", behavior: "smooth" }), 320);
+    };
+    applyVV();
+    vv?.addEventListener("resize", applyVV);
+    vv?.addEventListener("scroll", applyVV);
+    document.addEventListener("focusin", onFocusIn);
     window.addEventListener("keydown", onKey);
     ref.current?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener("focusin", onFocusIn);
+      vv?.removeEventListener("resize", applyVV);
+      vv?.removeEventListener("scroll", applyVV);
       const i = sheetStack.indexOf(token);
       if (i >= 0) sheetStack.splice(i, 1);
+      if (!sheetStack.length && rootEl) { rootEl.style.removeProperty("--k-vvh"); rootEl.style.removeProperty("--k-vvt"); }
+      // odağı sayfayı açan öğeye geri ver
+      if (prevFocus && document.contains(prevFocus) && prevFocus.focus) setTimeout(() => prevFocus.focus({ preventScroll: true }), 0);
       // Kendi eklediğimiz geçmiş girişini sessizce geri al (geri tuşuyla
       // kapandıysa zaten geri gidilmiştir).
       // Ertelenir + yalnızca giriş hâlâ BİZİMSE geri alınır (React StrictMode'un
@@ -83,7 +118,10 @@ export default function Sheet({ open, onClose, title, children, footer, tall = f
   }, []);
 
   if (!open) return null;
-  return (
+  // Portal: iç içe sayfalar (ör. filtre içindeki tutar tuş takımı) bir üst sayfanın kırpma/kapsama
+  // bağlamına girmesin; hep modül kökünün üstüne çizilir (React ağacı ve olaylar aynı kalır).
+  const host = document.querySelector(".kesem-root") || document.body;
+  return createPortal(
     <div className="k-sheet-layer">
       <div className="k-scrim" onClick={onClose} />
       <div
@@ -107,6 +145,7 @@ export default function Sheet({ open, onClose, title, children, footer, tall = f
         <div className="k-sheet-body">{children}</div>
         {footer}
       </div>
-    </div>
+    </div>,
+    host
   );
 }

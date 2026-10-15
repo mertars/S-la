@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Amt } from "../ui/Amt";
 import { Plus, Wallet } from "lucide-react";
 import { Page, Ring, AmountSheet, STATE_LABEL, pct } from "../ui/parts";
 import Sheet from "../ui/Sheet";
@@ -35,7 +36,7 @@ export default function BudgetPage({ onBack }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="k-cap">Aylık bütçe</div>
                   <button type="button" className="k-num lg" onClick={() => setEdit({ type: "total" })} aria-label="Aylık bütçeyi düzenle" style={{ display: "block", textAlign: "left" }}>
-                    {formatMoney(st.monthly, "TRY", { hideZeroDecimals: true })}
+                    <Amt>{formatMoney(st.monthly, "TRY", { hideZeroDecimals: true })}</Amt>
                   </button>
                   <span className={`k-pill ${st.state}`} style={{ marginTop: 8 }}>{STATE_LABEL[st.state]}</span>
                 </div>
@@ -49,9 +50,9 @@ export default function BudgetPage({ onBack }) {
             )}
             {st.hasBudget && (
               <div className="k-row-between" style={{ marginTop: 14, gap: 8, alignItems: "flex-start" }}>
-                <div><div className="k-cap">Harcanan</div><b className="k-num md">{formatMoney(st.spent, "TRY", { hideZeroDecimals: true })}</b></div>
-                <div><div className="k-cap">Planlı</div><b className="k-num md">{formatMoney(st.committed, "TRY", { hideZeroDecimals: true })}</b></div>
-                <div><div className="k-cap">Kalan</div><b className={`k-num md ${st.free < 0 ? "k-state-over" : ""}`}>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</b></div>
+                <div><div className="k-cap">Harcanan</div><b className="k-num md"><Amt>{formatMoney(st.spent, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
+                <div><div className="k-cap">Planlı</div><b className="k-num md"><Amt>{formatMoney(st.committed, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
+                <div><div className="k-cap">Kalan</div><b className={`k-num md ${st.free < 0 ? "k-state-over" : ""}`}><Amt>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
               </div>
             )}
           </section>
@@ -68,7 +69,7 @@ export default function BudgetPage({ onBack }) {
                   <div className={`k-tile-sub k-state-${c.state === "ok" ? "" : c.state}`} style={{ fontWeight: 700 }}>
                     {pct(c.ratio)}
                   </div>
-                  <div className="k-tile-sub k-ellip">{formatMoney(c.spent, "TRY", { hideZeroDecimals: true })} / {formatMoney(c.limit, "TRY", { hideZeroDecimals: true })}</div>
+                  <div className="k-tile-sub k-ellip"><Amt>{formatMoney(c.spent, "TRY", { hideZeroDecimals: true })}</Amt> / <Amt>{formatMoney(c.limit, "TRY", { hideZeroDecimals: true })}</Amt></div>
                 </div>
               </button>
             );

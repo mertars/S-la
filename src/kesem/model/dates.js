@@ -96,7 +96,11 @@ export function periodRange(ts, startDay = 1) {
   if (d.getDate() < startDay) m -= 1;
   return [new Date(y, m, startDay).getTime(), new Date(y, m + 1, startDay).getTime()];
 }
-export const shiftPeriod = (ts, delta, startDay = 1) => shiftMonth(periodRange(ts, startDay)[0], delta);
+// Dönemi `delta` dönem kaydır; dönemin BAŞLANGIÇ gününü korur (maaş günü 25 → 25. günden başlar).
+export const shiftPeriod = (ts, delta, startDay = 1) => {
+  const from = new Date(periodRange(ts, startDay)[0]);
+  return new Date(from.getFullYear(), from.getMonth() + delta, startDay).getTime();
+};
 export function periodLabel(ts, startDay = 1) {
   if (startDay === 1) return monthLabel(ts);
   const [from, to] = periodRange(ts, startDay);

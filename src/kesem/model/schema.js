@@ -44,6 +44,7 @@
 // meta: { id: "settings", ... } , { id: "schema", version },
 //   { id: "budget", monthlyMinor, byCategory{catId:minor}, startDay(1-28), includePlanned }
 //   { id: "rates", enabled[], rates{USD:{rate,updatedAt}} }   { id: "activity", days[YYYY-MM-DD] }
+//   { id: "lock", enabled, salt, hash, iter, len, bio{credId}|null, autoLock(sn), fails, lockedUntil }  ← PIN türevi; yedeğe GİRMEZ
 // blobs: { id, blob, type, createdAt }   (fiş fotoğrafları)
 
 export const SCHEMA_VERSION = 2;
@@ -64,6 +65,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
   lastCategory: {}, // { expense: id, income: id }
   lastAccount: null,
   dismissedSuggestions: [],
+  // Parça 3
+  privacy: false, // tutarları bulanıklaştır
+  onboarded: false, // tanışma ekranı görüldü/atlandı
+  lastBackupAt: null,
 });
 
 export const uid = () =>

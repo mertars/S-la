@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Amt } from "../ui/Amt";
 import { Plus, Trash2, Gift, ShoppingBag } from "lucide-react";
 import { Page, AmountField } from "../ui/parts";
 import Sheet from "../ui/Sheet";
@@ -55,7 +56,7 @@ export default function WishesPage({ onBack }) {
         <div className="k-bento">
           <section className="k-card hero b-2x1">
             <div className="k-cap">Listenin toplamı</div>
-            <div className="k-num lg">{formatMoney(total, "TRY", { hideZeroDecimals: true })}</div>
+            <div className="k-num lg"><Amt>{formatMoney(total, "TRY", { hideZeroDecimals: true })}</Amt></div>
           </section>
           <div className="k-card accent b-1x1"><div className="k-cap">İstek</div><b className="k-num md">{open.length}</b><span className="k-tile-sub">bekliyor</span></div>
           {open.map((w, i) => (
@@ -64,7 +65,7 @@ export default function WishesPage({ onBack }) {
                 <span className="k-tile-ico"><Gift size={17} /></span>
                 <span style={{ minWidth: 0 }}>
                   <span className="k-tile-title k-ellip" style={{ display: "block", fontSize: i === 0 ? 17 : 13.5 }}>{w.name}</span>
-                  <b className="k-num md" style={i === 0 ? {} : { fontSize: 15 }}>{w.priceMinor ? formatMoney(w.priceMinor, w.currency, { hideZeroDecimals: true }) : "Fiyat yok"}</b>
+                  <b className="k-num md" style={i === 0 ? {} : { fontSize: 15 }}>{w.priceMinor ? <Amt>{formatMoney(w.priceMinor, w.currency, { hideZeroDecimals: true })}</Amt> : "Fiyat yok"}</b>
                 </span>
               </button>
               <button type="button" className="k-btn primary sm" onClick={() => buy(w)}><ShoppingBag size={14} /> Aldım</button>
@@ -81,7 +82,7 @@ export default function WishesPage({ onBack }) {
               <button key={w.id} type="button" className="k-manage-row" onClick={() => w.txId && app.navigate(`harcamalar/${w.txId}`)}>
                 <span className="k-menu-icon"><ShoppingBag size={18} /></span>
                 <span>{w.name}<small>{shortDate(w.boughtAt)}</small></span>
-                <b style={{ fontVariantNumeric: "tabular-nums" }}>{formatMoney(w.priceMinor || 0, w.currency, { hideZeroDecimals: true })}</b>
+                <b style={{ fontVariantNumeric: "tabular-nums" }}><Amt>{formatMoney(w.priceMinor || 0, w.currency, { hideZeroDecimals: true })}</Amt></b>
               </button>
             ))}
           </div>

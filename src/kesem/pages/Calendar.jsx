@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Amt } from "../ui/Amt";
 import { CalendarClock, ChevronLeft, ChevronRight, Check, SkipForward } from "lucide-react";
 import { Page } from "../ui/parts";
 import { Bubble } from "../ui/icons";
@@ -25,7 +26,7 @@ export function UpcomingRow({ it, onOpen }) {
             {shortDate(it.dateTs)} · {relativeDayLabel(it.days)}
           </span>
         </span>
-        <b style={{ fontVariantNumeric: "tabular-nums" }}>{formatMoney(it.amountMinor, it.currency, { hideZeroDecimals: true })}</b>
+        <b style={{ fontVariantNumeric: "tabular-nums" }}><Amt>{formatMoney(it.amountMinor, it.currency, { hideZeroDecimals: true })}</Amt></b>
       </button>
       {it.kind === "recurring" && !it.autoPost && (
         <>
@@ -74,7 +75,7 @@ export default function CalendarPage({ onBack }) {
                 <div className="k-cap">{first.status === "overdue" ? "Gecikmiş ödeme" : "Sıradaki ödeme"}</div>
                 <div className="k-num lg k-ellip">{first.title}</div>
                 <div className="k-row-between" style={{ marginTop: 6 }}>
-                  <b className="k-num md">{formatMoney(first.amountMinor, first.currency, { hideZeroDecimals: true })}</b>
+                  <b className="k-num md"><Amt>{formatMoney(first.amountMinor, first.currency, { hideZeroDecimals: true })}</Amt></b>
                   <span className={`k-pill ${first.status === "overdue" ? "over" : first.status === "later" ? "" : "near"}`}>{relativeDayLabel(first.days)}</span>
                 </div>
               </>

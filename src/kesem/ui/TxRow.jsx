@@ -1,4 +1,5 @@
 import { Paperclip } from "lucide-react";
+import { Amt } from "./Amt";
 import { Bubble } from "./icons";
 import { useKesem } from "../state/store";
 import { formatMoney } from "../model/money";
@@ -24,7 +25,7 @@ export default function TxRow({ tx, onClick, active, showDay = false, trailing }
           {showDay ? `${meta}` : meta}
         </span>
       </span>
-      <span className={`k-tx-amt ${income ? "income" : ""}`}>{formatMoney(income ? tx.amountMinor : -tx.amountMinor, tx.currency, { sign: income })}</span>
+      <span className={`k-tx-amt ${income ? "income" : ""}`}><Amt>{formatMoney(income ? tx.amountMinor : -tx.amountMinor, tx.currency, { sign: income })}</Amt></span>
       {trailing}
     </Tag>
   );

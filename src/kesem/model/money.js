@@ -84,3 +84,19 @@ export const baseOf = (rec, rates) => {
 };
 
 export const formatRate = (r) => (r ? new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(r) : "—");
+
+// ---- Parça 3: gizlilik maskesi + kompakt biçim ----
+let maskOn = false;
+export const setMoneyMask = (v) => { maskOn = !!v; };
+// Metin bağlamları (bildirim şeridi, aria-label, dışa aktarma DEĞİL): gizlilik modunda maskeli.
+export function formatMoneyText(minor, currency = "TRY", opts) {
+  return maskOn ? `••••${NBSP}${currencySymbol(currency)}` : formatMoney(minor, currency, opts);
+}
+// Takvim hücresi gibi dar yerler için: 850 · 1,2B · 3,4M  (Türkçe: B = bin)
+export function formatCompact(minor) {
+  const v = Math.abs(minor) / 100;
+  const f = (n) => new Intl.NumberFormat("tr-TR", { maximumFractionDigits: n < 10 ? 1 : 0 }).format(n);
+  if (v >= 1e6) return f(v / 1e6) + "M";
+  if (v >= 1e3) return f(v / 1e3) + "B";
+  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(v);
+}

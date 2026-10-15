@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Amt } from "../ui/Amt";
 import { Plus, Trash2, Users, Check } from "lucide-react";
 import { Page, AmountSheet, AmountField, SplitView } from "../ui/parts";
 import Sheet from "../ui/Sheet";
@@ -6,7 +7,7 @@ import { EmptyState, Segmented } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { personBalances, remainingOf } from "../model/finance";
-import { formatMoney, rateOf, CURRENCIES, currencySymbol } from "../model/money";
+import { formatMoney, formatMoneyText, rateOf, CURRENCIES, currencySymbol } from "../model/money";
 import { fromDateInput, shortDate, startOfDay, toDateInput, trLower } from "../model/dates";
 
 function DebtEditor({ initial, onClose }) {
@@ -82,9 +83,9 @@ function PersonDetail({ id, onBack }) {
     <Page title={person.name} subtitle={nl.text} onBack={onBack} right={<button type="button" className="k-btn primary sm" onClick={() => setEdit({ personName: person.name })}><Plus size={16} /> Kayıt</button>}>
       <section className="k-card hero">
         <div className="k-cap">{nl.text}</div>
-        <div className="k-num xl">{formatMoney(Math.abs(bal?.net || 0), "TRY", { hideZeroDecimals: true })}</div>
+        <div className="k-num xl"><Amt>{formatMoney(Math.abs(bal?.net || 0), "TRY", { hideZeroDecimals: true })}</Amt></div>
         <div className="k-row-between" style={{ marginTop: 10 }}>
-          <span className="k-muted" style={{ fontSize: 13.5 }}>Alacak {formatMoney(bal?.lent || 0, "TRY", { hideZeroDecimals: true })} · Borç {formatMoney(bal?.borrowed || 0, "TRY", { hideZeroDecimals: true })}</span>
+          <span className="k-muted" style={{ fontSize: 13.5 }}>Alacak <Amt>{formatMoney(bal?.lent || 0, "TRY", { hideZeroDecimals: true })}</Amt> · Borç <Amt>{formatMoney(bal?.borrowed || 0, "TRY", { hideZeroDecimals: true })}</Amt></span>
           {bal?.overdue > 0 && <span className="k-pill over">{bal.overdue} gecikmiş</span>}
         </div>
       </section>
@@ -101,10 +102,10 @@ function PersonDetail({ id, onBack }) {
               </button>
               <button type="button" className="k-grow" style={{ textAlign: "left" }} onClick={() => setEdit(d)}>
                 <div className="k-ellip" style={{ fontWeight: 650, textDecoration: settled ? "line-through" : "none", opacity: settled ? 0.6 : 1 }}>
-                  {d.direction === "lent" ? "Verdim" : "Aldım"} · {formatMoney(d.amountMinor, d.currency)}
+                  {d.direction === "lent" ? "Verdim" : "Aldım"} · <Amt>{formatMoney(d.amountMinor, d.currency)}</Amt>
                 </div>
                 <div className="k-tile-sub k-ellip">
-                  {d.note || "Not yok"}{d.txId ? " · bölüşülen harcama" : ""}{d.paidMinor && !settled ? ` · ${formatMoney(d.paidMinor, d.currency)} ödendi` : ""}
+                  {d.note || "Not yok"}{d.txId ? " · bölüşülen harcama" : ""}{d.paidMinor && !settled ? ` · ${formatMoneyText(d.paidMinor, d.currency)} ödendi` : ""}
                 </div>
                 {d.dueAt && !settled && <div className={`k-tile-sub ${late ? "k-state-over" : ""}`} style={late ? { fontWeight: 700 } : {}}>{late ? "Gecikti · " : "Vade · "}{shortDate(d.dueAt)}</div>}
               </button>
@@ -134,10 +135,10 @@ export default function DebtsPage({ id }) {
     <Page title="Borçlar" subtitle="Kim kime ne borçlu" onBack={app.isTablet ? undefined : () => app.goBack("daha-fazla")} right={<button type="button" className="k-btn primary sm" onClick={() => setEdit({})}><Plus size={16} /> Ekle</button>}>
       <section className="k-card hero">
         <div className="k-cap">{nl.text}</div>
-        <div className="k-num xl">{formatMoney(Math.abs(net), "TRY", { hideZeroDecimals: true })}</div>
+        <div className="k-num xl"><Amt>{formatMoney(Math.abs(net), "TRY", { hideZeroDecimals: true })}</Amt></div>
         <div className="k-row-between" style={{ marginTop: 12, gap: 8 }}>
-          <div><div className="k-cap">Alacağın</div><b className="k-num md">{formatMoney(lent, "TRY", { hideZeroDecimals: true })}</b></div>
-          <div><div className="k-cap">Borcun</div><b className="k-num md">{formatMoney(borrowed, "TRY", { hideZeroDecimals: true })}</b></div>
+          <div><div className="k-cap">Alacağın</div><b className="k-num md"><Amt>{formatMoney(lent, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
+          <div><div className="k-cap">Borcun</div><b className="k-num md"><Amt>{formatMoney(borrowed, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
         </div>
       </section>
       {withOpen.length === 0 ? (
@@ -152,7 +153,7 @@ export default function DebtsPage({ id }) {
                 <button key={b.person.id} type="button" className={`k-manage-row ${id === b.person.id ? "active" : ""}`} onClick={() => go(b.person.id)}>
                   <span className="k-menu-icon" style={{ fontWeight: 800 }}>{b.person.name.charAt(0).toLocaleUpperCase("tr-TR")}</span>
                   <span>{b.person.name}<small>{l.text}{b.overdue ? ` · ${b.overdue} gecikmiş` : ""}</small></span>
-                  <b className={l.cls} style={{ fontVariantNumeric: "tabular-nums" }}>{formatMoney(Math.abs(b.net), "TRY", { hideZeroDecimals: true })}</b>
+                  <b className={l.cls} style={{ fontVariantNumeric: "tabular-nums" }}><Amt>{formatMoney(Math.abs(b.net), "TRY", { hideZeroDecimals: true })}</Amt></b>
                 </button>
               );
             })}

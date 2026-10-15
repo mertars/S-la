@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Amt } from "../ui/Amt";
 import { PiggyBank, Plus, Trash2, Edit3, Target } from "lucide-react";
 import { Page, Ring, AmountSheet, AmountField, SplitView, pct } from "../ui/parts";
 import Sheet from "../ui/Sheet";
@@ -7,7 +8,7 @@ import { EmptyState } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { goalProjection, goalSaved } from "../model/finance";
-import { baseOf, formatMoney } from "../model/money";
+import { baseOf, formatMoney, formatMoneyText } from "../model/money";
 import { shortDate, fromDateInput, toDateInput, dateTimeLabel } from "../model/dates";
 import { uid } from "../model/schema";
 
@@ -89,9 +90,9 @@ function GoalDetail({ id, onBack }) {
           </Ring>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="k-cap">Biriken</div>
-            <div className="k-num lg">{formatMoney(p.saved, goal.currency, { hideZeroDecimals: true })}</div>
-            <div className="k-muted" style={{ fontSize: 13.5, marginTop: 4 }}>Hedef {formatMoney(goal.targetMinor, goal.currency, { hideZeroDecimals: true })}</div>
-            <div className="k-muted" style={{ fontSize: 13.5 }}>Kalan {formatMoney(p.remaining, goal.currency, { hideZeroDecimals: true })}</div>
+            <div className="k-num lg"><Amt>{formatMoney(p.saved, goal.currency, { hideZeroDecimals: true })}</Amt></div>
+            <div className="k-muted" style={{ fontSize: 13.5, marginTop: 4 }}>Hedef <Amt>{formatMoney(goal.targetMinor, goal.currency, { hideZeroDecimals: true })}</Amt></div>
+            <div className="k-muted" style={{ fontSize: 13.5 }}>Kalan <Amt>{formatMoney(p.remaining, goal.currency, { hideZeroDecimals: true })}</Amt></div>
           </div>
         </div>
       </section>
@@ -104,7 +105,7 @@ function GoalDetail({ id, onBack }) {
           </div>
           <div className="k-card calm b-1x1">
             <div className="k-cap">Aylık gerekli</div>
-            <b className="k-num md">{p.neededPerMonth ? formatMoney(p.neededPerMonth, goal.currency, { hideZeroDecimals: true }) : "—"}</b>
+            <b className="k-num md">{p.neededPerMonth ? <Amt>{formatMoney(p.neededPerMonth, goal.currency, { hideZeroDecimals: true })}</Amt> : "—"}</b>
             <span className="k-tile-sub">{goal.targetDate ? `${shortDate(goal.targetDate)} için` : "Tarih yok"}</span>
           </div>
         </div>
@@ -119,7 +120,7 @@ function GoalDetail({ id, onBack }) {
           {[...goal.deposits].sort((a, b) => b.at - a.at).map((d) => (
             <div key={d.id} className="k-line-item" style={{ padding: "6px 14px" }}>
               <div className="k-grow">
-                <b className={d.amountMinor < 0 ? "k-state-over" : "pos"}>{formatMoney(d.amountMinor, goal.currency, { sign: true })}</b>
+                <b className={d.amountMinor < 0 ? "k-state-over" : "pos"}><Amt>{formatMoney(d.amountMinor, goal.currency, { sign: true })}</Amt></b>
                 <div className="k-tile-sub">{dateTimeLabel(d.at)}</div>
               </div>
               <button type="button" className="k-icon-btn sm" aria-label="Hareketi sil" onClick={() => delDeposit(d.id)}><Trash2 size={14} /></button>
@@ -149,8 +150,8 @@ export default function GoalsPage({ id }) {
         <>
           <section className="k-card hero">
             <div className="k-cap">Toplam birikim</div>
-            <div className="k-num xl">{formatMoney(totalSaved, "TRY", { hideZeroDecimals: true })}</div>
-            <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{k.goals.length} hedef · toplam hedef {formatMoney(totalTarget, "TRY", { hideZeroDecimals: true })}</div>
+            <div className="k-num xl"><Amt>{formatMoney(totalSaved, "TRY", { hideZeroDecimals: true })}</Amt></div>
+            <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{k.goals.length} hedef · toplam hedef <Amt>{formatMoney(totalTarget, "TRY", { hideZeroDecimals: true })}</Amt></div>
           </section>
           <div className="k-bento-wrap k-gap">
             <div className="k-bento">
@@ -165,7 +166,7 @@ export default function GoalsPage({ id }) {
                     <div style={{ minWidth: 0 }}>
                       <div className="k-tile-title k-ellip" style={big ? {} : { fontSize: 13.5 }}>{g.name}</div>
                       <div className="k-accent-text" style={{ fontWeight: 800, fontSize: big ? 24 : 15 }}>{pct(p.pct)}</div>
-                      <div className="k-tile-sub k-ellip">{formatMoney(p.saved, g.currency, { hideZeroDecimals: true })}{big ? ` / ${formatMoney(g.targetMinor, g.currency, { hideZeroDecimals: true })}` : ""}</div>
+                      <div className="k-tile-sub k-ellip"><Amt>{formatMoney(p.saved, g.currency, { hideZeroDecimals: true })}</Amt>{big ? ` / ${formatMoneyText(g.targetMinor, g.currency, { hideZeroDecimals: true })}` : ""}</div>
                       {big && <div className="k-tile-sub">{etaText(p)}</div>}
                     </div>
                   </button>

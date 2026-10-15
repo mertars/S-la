@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Amt } from "../ui/Amt";
 import { Check, Plus, X, ShoppingBasket } from "lucide-react";
 import { Page, AmountSheet, Bar } from "../ui/parts";
 import { EmptyState } from "../ui/common";
@@ -33,7 +34,7 @@ export default function ShoppingPage({ onBack }) {
           </div>
           <div style={{ textAlign: "right" }}>
             <div className="k-cap">Tahmini tutar</div>
-            <b className="k-num md">{formatMoney(checkedTotal, "TRY", { hideZeroDecimals: true })}</b>
+            <b className="k-num md"><Amt>{formatMoney(checkedTotal, "TRY", { hideZeroDecimals: true })}</Amt></b>
           </div>
         </div>
         <div style={{ marginTop: 12 }}><Bar value={todo.length ? checked.length / todo.length : 0} /></div>
@@ -53,7 +54,7 @@ export default function ShoppingPage({ onBack }) {
                 <Check size={16} />
               </button>
               <span className="k-grow k-ellip" style={{ fontWeight: 600, textDecoration: i.checked ? "line-through" : "none", opacity: i.checked ? 0.6 : 1 }}>{i.name}</span>
-              <button type="button" className="k-btn tonal sm" onClick={() => setPriceFor(i)} aria-label={`${i.name} fiyatı`}>{i.estimateMinor ? formatMoney(i.estimateMinor, "TRY", { hideZeroDecimals: true }) : "Fiyat"}</button>
+              <button type="button" className="k-btn tonal sm" onClick={() => setPriceFor(i)} aria-label={`${i.name} fiyatı`}>{i.estimateMinor ? <Amt>{formatMoney(i.estimateMinor, "TRY", { hideZeroDecimals: true })}</Amt> : "Fiyat"}</button>
               <button type="button" className="k-icon-btn sm" aria-label="Sil" onClick={() => k.removeRecord("shopping", i.id, "ürün silme")}><X size={14} /></button>
             </div>
           ))}

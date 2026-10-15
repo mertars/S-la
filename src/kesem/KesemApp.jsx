@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Home, MoreHorizontal, Plus, Receipt, ArrowLeft } from "lucide-react";
 import "./kesem.css";
 import { KesemProvider, useKesem } from "./state/store";
@@ -10,7 +10,10 @@ import HomePage from "./pages/Home";
 import ExpensesPage from "./pages/Expenses";
 import AnalysisPage from "./pages/Analysis";
 import MorePage from "./pages/More";
+import LockScreen from "./ui/LockScreen";
+import Onboarding from "./ui/Onboarding";
 import { useMenuLabel } from "./config";
+import { emptyFilter } from "./model/filters";
 import { useTheme } from "../context/ThemeContext";
 
 const TABS = [
@@ -30,13 +33,17 @@ function NavItem({ tab, active, onClick }) {
   );
 }
 
-function Shell({ onExit }) {
+function Shell({ onExit, userId }) {
   const k = useKesem();
   const { theme } = useTheme();
   const isTablet = useIsTablet();
   const { segs, navigate, goBack } = useKesemRoute();
   const menuLabel = useMenuLabel();
   const [sheet, setSheet] = useState(null); // { mode, initial, editId }
+  const [expFilter, setExpFilter] = useState(emptyFilter);
+  const [unlocked, setUnlocked] = useState(false);
+  const [covered, setCovered] = useState(false);
+  const hiddenAt = useRef(0);
 
   const tab = segs[0] || "";
   const openAdd = useCallback((o = {}) => setSheet({ mode: "tx", initial: o.initial || {}, editId: o.editId || null, key: Date.now() }), []);
@@ -49,9 +56,41 @@ function Shell({ onExit }) {
   const go = useCallback((path, opts) => navigate(path, opts), [navigate]);
 
   const app = useMemo(
-    () => ({ openAdd, openTemplate, navigate: go, goBack, isTablet, exit: onExit, menuLabel }),
-    [openAdd, openTemplate, go, goBack, isTablet, onExit, menuLabel]
+    () => ({ openAdd, openTemplate, navigate: go, goBack, isTablet, exit: onExit, menuLabel, expFilter, setExpFilter, userKey: userId, markUnlocked: () => setUnlocked(true) }),
+    [openAdd, openTemplate, go, goBack, isTablet, onExit, menuLabel, expFilter, userId]
   );
+
+  // ---- Kilit: açılışta ve arka plandan dönünce PIN; uygulama değiştiricide içerik örtülür ----
+  const lockOn = k.ready && !!k.lock.enabled && !!k.lock.hash;
+  const locked = lockOn && !unlocked;
+  const autoLock = k.lock.autoLock || 0;
+  useEffect(() => {
+    if (!k.ready) return;
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt.current = Date.now();
+        if (lockOn || k.settings.privacy) setCovered(true);
+      } else {
+        setCovered(false);
+        if (lockOn && Date.now() - hiddenAt.current >= autoLock * 1000) setUnlocked(false);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [k.ready, lockOn, autoLock, k.settings.privacy]);
+
+  // Kesem'i ayrı uygulama olarak ana ekrana eklemek için manifest + başlık (çıkışta geri alınır).
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    const prevHref = link?.getAttribute("href");
+    const prevTitle = document.title;
+    link?.setAttribute("href", "/kesem-manifest.json");
+    document.title = menuLabel;
+    return () => {
+      if (prevHref) link?.setAttribute("href", prevHref);
+      document.title = prevTitle;
+    };
+  }, [menuLabel]);
 
   // iOS/Android durum çubuğu rengi modülün kendi zeminine uysun; çıkışta eski hâli.
   useEffect(() => {
@@ -81,6 +120,7 @@ function Shell({ onExit }) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [ready, materialize, touchActivity]);
 
+  const showOnb = k.ready && !locked && k.settings.onboarded !== true && (k.settings.onbForce || (k.transactions.length === 0 && !(k.budget.monthlyMinor > 0)));
   let page;
   if (!k.ready && !k.failed) page = <div className="k-boot" role="status" aria-label="Yükleniyor"><span className="k-spinner" /></div>;
   else if (k.failed) page = <div className="k-page"><EmptyState icon={<ArrowLeft size={30} />} title="Veriler açılamadı" text="Depolama erişilemiyor. Sayfayı yenile ya da tarayıcı ayarlarını kontrol et." /></div>;
@@ -93,8 +133,9 @@ function Shell({ onExit }) {
 
   return (
     <AppCtx.Provider value={app}>
-      <div className="kesem-root" data-k-scheme={scheme} data-k-palette={k.settings.palette} data-k-tablet={isTablet ? "1" : "0"}>
+      <div className="kesem-root" data-k-scheme={scheme} data-k-palette={k.settings.palette} data-k-tablet={isTablet ? "1" : "0"} data-k-privacy={k.settings.privacy ? "1" : "0"}>
         <div className="k-bg" aria-hidden="true" />
+        {locked && <LockScreen onUnlock={() => setUnlocked(true)} />}
         {isTablet && (
           <nav className="k-side" aria-label="Harcama takibi gezinmesi">
             <div className="k-side-brand">{menuLabel}</div>
@@ -111,7 +152,7 @@ function Shell({ onExit }) {
         )}
         <main className="k-main" id="k-main">
           {k.ready && !k.persistent && <div className="k-banner" role="alert">Kalıcı depolama kullanılamıyor — kayıtlar bu oturum kapanınca silinir.</div>}
-          {page}
+          {locked ? null : page}
         </main>
         {!isTablet && (
           <nav className="k-tabbar" aria-label="Harcama takibi gezinmesi">
@@ -129,7 +170,9 @@ function Shell({ onExit }) {
             <Plus size={30} strokeWidth={2.6} />
           </button>
         )}
-        {sheet && <AddSheet key={sheet.key} mode={sheet.mode} initial={sheet.initial} editId={sheet.editId} onClose={closeSheet} />}
+        {showOnb && <Onboarding />}
+        {covered && <div className="k-cover" aria-hidden="true" />}
+        {!locked && sheet && <AddSheet key={sheet.key} mode={sheet.mode} initial={sheet.initial} editId={sheet.editId} onClose={closeSheet} />}
         <Toast />
       </div>
     </AppCtx.Provider>
@@ -140,7 +183,7 @@ function Shell({ onExit }) {
 export default function KesemApp({ userId, onExit }) {
   return (
     <KesemProvider userId={userId}>
-      <Shell onExit={onExit} />
+      <Shell onExit={onExit} userId={userId} />
     </KesemProvider>
   );
 }

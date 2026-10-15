@@ -4,6 +4,7 @@ import NumPad from "./NumPad";
 import { displayInput, formatMoney, minorToInput, parseAmountInput, pressKey, currencySymbol } from "../model/money";
 import { useApp } from "./appctx";
 import PageHeader from "./PageHeader";
+import { Amt } from "./Amt";
 
 // Halka ilerleme göstergesi. state: ok | near | over (yalnızca DURUM renkleri) | boş = marka vurgusu.
 export function Ring({ value = 0, size = 64, stroke = 7, state, label, children }) {
@@ -62,7 +63,7 @@ export function AmountField({ label, value, currency = "TRY", onChange, placehol
   return (
     <>
       <button type="button" className="k-amount-field k-glassfield" onClick={() => setOpen(true)} aria-label={label}>
-        <span>{value ? formatMoney(value, currency) : <span className="k-muted" style={{ fontWeight: 500, fontSize: 16 }}>{placeholder}</span>}</span>
+        <span>{value ? <Amt>{formatMoney(value, currency)}</Amt> : <span className="k-muted" style={{ fontWeight: 500, fontSize: 16 }}>{placeholder}</span>}</span>
         <small>{label}</small>
       </button>
       {open && <AmountSheet title={label} initialMinor={value || 0} currency={currency} allowZero={allowZero} onSubmit={onChange} onClose={() => setOpen(false)} />}
@@ -90,5 +91,16 @@ export function Page({ title, subtitle, onBack, right, children }) {
       {children}
       <div className="k-page-end" />
     </div>
+  );
+}
+
+// Küçük Kahraman kartı (yönetim sayfalarında tek Kahraman).
+export function HeroStat({ cap, value, sub }) {
+  return (
+    <section className="k-card hero" aria-label={cap}>
+      <div className="k-cap">{cap}</div>
+      <div className="k-num xl" style={typeof value === "string" ? { fontSize: "clamp(26px, 8vw, 34px)" } : undefined}>{value}</div>
+      {sub && <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{sub}</div>}
+    </section>
   );
 }

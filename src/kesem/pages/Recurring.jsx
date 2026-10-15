@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Amt } from "../ui/Amt";
 import { Plus, Trash2, Repeat, Layers, Pause, Play, Check, SkipForward } from "lucide-react";
 import { Page, AmountField, Bar, SplitView } from "../ui/parts";
 import Sheet from "../ui/Sheet";
@@ -7,7 +8,7 @@ import { EmptyState, Segmented } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { installmentProgress, monthlyEquivalent, occurrencesBetween, yearlyEquivalent } from "../model/finance";
-import { formatMoney, rateOf, CURRENCIES, currencySymbol } from "../model/money";
+import { formatMoney, rateOf, CURRENCIES, currencySymbol, formatMoneyText } from "../model/money";
 import { addDays, daysBetween, fromDateInput, relativeDayLabel, shortDate, startOfDay, toDateInput } from "../model/dates";
 
 const TYPES = [
@@ -126,10 +127,10 @@ function RuleDetail({ id, onBack }) {
     <Page title={rule.title} subtitle={`${rule.interval > 1 ? `Her ${rule.interval} ` : "Her "}${FREQ_LABEL[rule.frequency]}${rule.paused ? " · duraklatıldı" : ""}`} onBack={onBack}>
       <section className="k-card hero">
         <div className="k-cap">Her ödeme</div>
-        <div className="k-num xl">{formatMoney(rule.amountMinor, rule.currency)}</div>
+        <div className="k-num xl"><Amt>{formatMoney(rule.amountMinor, rule.currency)}</Amt></div>
         <div className="k-row-between" style={{ marginTop: 12, gap: 8 }}>
-          <div><div className="k-cap">Aylık</div><b className="k-num md">{formatMoney(monthly, "TRY", { hideZeroDecimals: true })}</b></div>
-          <div><div className="k-cap">Yıllık</div><b className="k-num md">{formatMoney(yearlyEquivalent(rule, k.rates), "TRY", { hideZeroDecimals: true })}</b></div>
+          <div><div className="k-cap">Aylık</div><b className="k-num md"><Amt>{formatMoney(monthly, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
+          <div><div className="k-cap">Yıllık</div><b className="k-num md"><Amt>{formatMoney(yearlyEquivalent(rule, k.rates), "TRY", { hideZeroDecimals: true })}</Amt></b></div>
         </div>
       </section>
       <div className="k-section-title">Yaklaşan</div>
@@ -172,8 +173,8 @@ function PlanDetail({ id, onBack }) {
     <Page title={plan.title} subtitle={`${plan.count} taksit${plan.stoppedAt ? " · durduruldu" : ""}`} onBack={onBack}>
       <section className="k-card hero">
         <div className="k-cap">Kalan</div>
-        <div className="k-num xl">{formatMoney(pr.leftMinor, plan.currency, { hideZeroDecimals: true })}</div>
-        <div className="k-muted" style={{ fontSize: 13.5, margin: "6px 0 12px" }}>{pr.leftCount} taksit kaldı · toplam {formatMoney(plan.totalMinor, plan.currency, { hideZeroDecimals: true })}</div>
+        <div className="k-num xl"><Amt>{formatMoney(pr.leftMinor, plan.currency, { hideZeroDecimals: true })}</Amt></div>
+        <div className="k-muted" style={{ fontSize: 13.5, margin: "6px 0 12px" }}>{pr.leftCount} taksit kaldı · toplam <Amt>{formatMoney(plan.totalMinor, plan.currency, { hideZeroDecimals: true })}</Amt></div>
         <Bar value={pr.rows.length ? pr.doneCount / pr.rows.length : 0} />
       </section>
       <div className="k-section-title">Ödeme planı</div>
@@ -184,7 +185,7 @@ function PlanDetail({ id, onBack }) {
             <div key={r.key} className="k-line-item" style={{ padding: "8px 14px", opacity: done ? 0.7 : 1 }}>
               <span className={`k-check ${done ? "on" : ""}`} aria-hidden="true"><Check size={16} /></span>
               <div className="k-grow"><b>{r.index + 1}. taksit</b><div className="k-tile-sub">{shortDate(r.dateTs)} {new Date(r.dateTs).getFullYear()}{done ? " · kaydedildi" : ` · ${relativeDayLabel(daysBetween(now, r.dateTs))}`}</div></div>
-              <b style={{ fontVariantNumeric: "tabular-nums" }}>{formatMoney(r.amountMinor, plan.currency)}</b>
+              <b style={{ fontVariantNumeric: "tabular-nums" }}><Amt>{formatMoney(r.amountMinor, plan.currency)}</Amt></b>
             </div>
           );
         })}
@@ -221,8 +222,8 @@ export default function RecurringPage({ tab = "abonelikler", id }) {
         <>
           <section className="k-card hero k-gap">
             <div className="k-cap">Aylık toplam</div>
-            <div className="k-num xl">{formatMoney(monthTotal, "TRY", { hideZeroDecimals: true })}</div>
-            <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>Yıllık {formatMoney(monthTotal * 12, "TRY", { hideZeroDecimals: true })} · {rows.filter((x) => !x.r.paused).length} ödeme</div>
+            <div className="k-num xl"><Amt>{formatMoney(monthTotal, "TRY", { hideZeroDecimals: true })}</Amt></div>
+            <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>Yıllık <Amt>{formatMoney(monthTotal * 12, "TRY", { hideZeroDecimals: true })}</Amt> · {rows.filter((x) => !x.r.paused).length} ödeme</div>
           </section>
           {rows.length === 0 ? (
             <EmptyState icon={<Repeat size={30} />} title="Tekrarlayan ödeme yok" text="Netflix, Spotify, kira, faturalar… Ekle; sonraki tarihi ve aylık/yıllık toplamı görürsün." action={<button type="button" className="k-btn primary" onClick={() => setCreating(true)}><Plus size={18} /> Ödeme ekle</button>} />
@@ -234,7 +235,7 @@ export default function RecurringPage({ tab = "abonelikler", id }) {
                   <button key={r.id} type="button" className={`k-manage-row ${id === r.id ? "active" : ""}`} onClick={() => go(r.id)} style={r.paused ? { opacity: 0.6 } : undefined}>
                     <Bubble icon={TYPE_ICON[r.type] || "wallet"} color={k.catById(r.categoryId).color} size={40} />
                     <span>{r.title}<small>{r.paused ? "Duraklatıldı" : next ? `${shortDate(next.dateTs)} · ${relativeDayLabel(days)}` : "Sona erdi"}{!r.autoPost && !r.paused ? " · elle onay" : ""}</small></span>
-                    <span style={{ textAlign: "right" }}><b style={{ fontVariantNumeric: "tabular-nums" }}>{formatMoney(r.amountMinor, r.currency, { hideZeroDecimals: true })}</b><small>aylık {formatMoney(monthly, "TRY", { hideZeroDecimals: true })}</small></span>
+                    <span style={{ textAlign: "right" }}><b style={{ fontVariantNumeric: "tabular-nums" }}><Amt>{formatMoney(r.amountMinor, r.currency, { hideZeroDecimals: true })}</Amt></b><small>aylık <Amt>{formatMoney(monthly, "TRY", { hideZeroDecimals: true })}</Amt></small></span>
                   </button>
                 );
               })}
@@ -247,11 +248,11 @@ export default function RecurringPage({ tab = "abonelikler", id }) {
             <div className="k-bento">
               <section className="k-card hero b-2x2">
                 <div className="k-cap">Kalan taksit</div>
-                <div className="k-num lg">{formatMoney(leftTotal, "TRY", { hideZeroDecimals: true })}</div>
+                <div className="k-num lg"><Amt>{formatMoney(leftTotal, "TRY", { hideZeroDecimals: true })}</Amt></div>
                 <div className="k-muted" style={{ fontSize: 13 }}>{plans.reduce((s, x) => s + x.pr.leftCount, 0)} taksit</div>
               </section>
               <div className="k-card accent b-1x1"><div className="k-cap">Plan</div><b className="k-num md">{plans.filter((x) => !x.pr.finished).length}</b><span className="k-tile-sub">devam eden</span></div>
-              <div className="k-card calm b-1x1"><div className="k-cap">Sıradaki</div><b className="k-num md">{formatMoney(nextMonthLoad, "TRY", { hideZeroDecimals: true })}</b><span className="k-tile-sub">bir sonraki ay</span></div>
+              <div className="k-card calm b-1x1"><div className="k-cap">Sıradaki</div><b className="k-num md"><Amt>{formatMoney(nextMonthLoad, "TRY", { hideZeroDecimals: true })}</Amt></b><span className="k-tile-sub">bir sonraki ay</span></div>
             </div>
           </div>
           {plans.length === 0 ? (
@@ -260,9 +261,9 @@ export default function RecurringPage({ tab = "abonelikler", id }) {
             <div className="k-card-list k-gap">
               {plans.map(({ p, pr }) => (
                 <button key={p.id} type="button" className={`k-manage-row ${id === p.id ? "active" : ""}`} onClick={() => go(p.id)} style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-                  <span className="k-row-between"><b style={{ fontSize: 16 }}>{p.title}</b><b style={{ fontVariantNumeric: "tabular-nums" }}>{formatMoney(pr.leftMinor, p.currency, { hideZeroDecimals: true })}</b></span>
+                  <span className="k-row-between"><b style={{ fontSize: 16 }}>{p.title}</b><b style={{ fontVariantNumeric: "tabular-nums" }}><Amt>{formatMoney(pr.leftMinor, p.currency, { hideZeroDecimals: true })}</Amt></b></span>
                   <Bar value={pr.rows.length ? pr.doneCount / pr.rows.length : 0} />
-                  <span className="k-tile-sub">{pr.doneCount}/{pr.rows.length} ödendi{pr.next ? ` · sıradaki ${shortDate(pr.next.dateTs)} · ${formatMoney(pr.next.amountMinor, p.currency)}` : " · bitti"}</span>
+                  <span className="k-tile-sub">{pr.doneCount}/{pr.rows.length} ödendi{pr.next ? ` · sıradaki ${shortDate(pr.next.dateTs)} · ${formatMoneyText(pr.next.amountMinor, p.currency)}` : " · bitti"}</span>
                 </button>
               ))}
             </div>
