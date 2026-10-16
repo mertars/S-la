@@ -110,7 +110,7 @@ export default function HomePage() {
             <section className="k-card hero b-3x1" style={{ "--wt": 4, "--ht": 2 }} aria-label="Bugün harcayabileceğin tutar">
               <div className="k-row-between">
                 <div className="k-cap">Bugün harcayabileceğin</div>
-                <span className={`k-pill ${st.state}`}>{STATE_LABEL[st.state]}</span>
+                <span className={`k-pill ${st.todayLeft < 0 && st.state === "ok" ? "near" : st.state}`}>{st.todayLeft < 0 && st.state === "ok" ? "Bugünkü pay aşıldı" : STATE_LABEL[st.state]}</span>
               </div>
               <div className="k-row-between" style={{ gap: 14 }}>
                 <div style={{ minWidth: 0 }}>

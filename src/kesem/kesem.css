@@ -63,16 +63,16 @@
   --kc-sky: #5db4ff; --kc-blue: #7b9cff; --kc-indigo: #9a8cff; --kc-violet: #c18cff; --kc-plum: #ec7fd0; --kc-stone: #aaa3b1;
 }
 /* ---- paletler (açık) ---- */
-.kesem-root[data-k-palette="lavanta"] { --k-accent: #7a52d6; --k-accent-2: #a98bf0; --k-bg-glow-1: rgba(150, 120, 240, 0.24); --k-bg-glow-2: rgba(240, 130, 190, 0.14); }
-.kesem-root[data-k-palette="adacayi"] { --k-accent: #2f8f6e; --k-accent-2: #6cc4a0; --k-bg-glow-1: rgba(80, 190, 150, 0.22); --k-bg-glow-2: rgba(230, 200, 120, 0.14); }
-.kesem-root[data-k-palette="okyanus"] { --k-accent: #2670d8; --k-accent-2: #5bb0f2; --k-bg-glow-1: rgba(80, 160, 240, 0.22); --k-bg-glow-2: rgba(110, 90, 230, 0.14); }
-.kesem-root[data-k-palette="mercan"] { --k-accent: #d9543a; --k-accent-2: #f0925a; --k-bg-glow-1: rgba(245, 150, 100, 0.24); --k-bg-glow-2: rgba(240, 110, 150, 0.14); }
+.kesem-root[data-k-palette="lavanta"], .k-palette[data-k-palette="lavanta"] { --k-accent: #7a52d6; --k-accent-2: #a98bf0; --k-bg-glow-1: rgba(150, 120, 240, 0.24); --k-bg-glow-2: rgba(240, 130, 190, 0.14); }
+.kesem-root[data-k-palette="adacayi"], .k-palette[data-k-palette="adacayi"] { --k-accent: #2f8f6e; --k-accent-2: #6cc4a0; --k-bg-glow-1: rgba(80, 190, 150, 0.22); --k-bg-glow-2: rgba(230, 200, 120, 0.14); }
+.kesem-root[data-k-palette="okyanus"], .k-palette[data-k-palette="okyanus"] { --k-accent: #2670d8; --k-accent-2: #5bb0f2; --k-bg-glow-1: rgba(80, 160, 240, 0.22); --k-bg-glow-2: rgba(110, 90, 230, 0.14); }
+.kesem-root[data-k-palette="mercan"], .k-palette[data-k-palette="mercan"] { --k-accent: #d9543a; --k-accent-2: #f0925a; --k-bg-glow-1: rgba(245, 150, 100, 0.24); --k-bg-glow-2: rgba(240, 110, 150, 0.14); }
 /* ---- paletler (koyu) ---- */
-.kesem-root[data-k-scheme="dark"][data-k-palette="gul"] { --k-accent: #ff6f9c; --k-accent-2: #ff9bbb; --k-on-accent: #2b0716; }
-.kesem-root[data-k-scheme="dark"][data-k-palette="lavanta"] { --k-accent: #a78bfa; --k-accent-2: #c9b6ff; --k-on-accent: #170a38; }
-.kesem-root[data-k-scheme="dark"][data-k-palette="adacayi"] { --k-accent: #52d6a6; --k-accent-2: #8ae8c4; --k-on-accent: #04241a; }
-.kesem-root[data-k-scheme="dark"][data-k-palette="okyanus"] { --k-accent: #5aa9ff; --k-accent-2: #8cc6ff; --k-on-accent: #04193a; }
-.kesem-root[data-k-scheme="dark"][data-k-palette="mercan"] { --k-accent: #ff8a6a; --k-accent-2: #ffb08a; --k-on-accent: #330d04; }
+.kesem-root[data-k-scheme="dark"][data-k-palette="gul"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="gul"] { --k-accent: #ff6f9c; --k-accent-2: #ff9bbb; --k-on-accent: #2b0716; }
+.kesem-root[data-k-scheme="dark"][data-k-palette="lavanta"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="lavanta"] { --k-accent: #a78bfa; --k-accent-2: #c9b6ff; --k-on-accent: #170a38; }
+.kesem-root[data-k-scheme="dark"][data-k-palette="adacayi"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="adacayi"] { --k-accent: #52d6a6; --k-accent-2: #8ae8c4; --k-on-accent: #04241a; }
+.kesem-root[data-k-scheme="dark"][data-k-palette="okyanus"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="okyanus"] { --k-accent: #5aa9ff; --k-accent-2: #8cc6ff; --k-on-accent: #04193a; }
+.kesem-root[data-k-scheme="dark"][data-k-palette="mercan"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="mercan"] { --k-accent: #ff8a6a; --k-accent-2: #ffb08a; --k-on-accent: #330d04; }
 
 /* ---- temel ---- */
 .kesem-root {
@@ -416,12 +416,12 @@ button.k-tx:active, .k-tx.active { background: var(--k-tonal); }
    sol üst. Neon/parlama/renkli gölge yok; gölgeler kısa ve nötr.
    ===================================================================== */
 /* ---- ek paletler (Bordo, Toz Pembe, Gül Kurusu) ---- */
-.kesem-root[data-k-palette="bordo"] { --k-accent: #8c1d3f; --k-accent-2: #c0506f; --k-on-accent: #ffffff; --k-bg-glow-1: rgba(140, 29, 63, 0.14); }
-.kesem-root[data-k-palette="tozpembe"] { --k-accent: #a14660; --k-accent-2: #d99fb0; --k-on-accent: #ffffff; --k-bg-glow-1: rgba(190, 110, 135, 0.18); }
-.kesem-root[data-k-palette="gulkurusu"] { --k-accent: #8a5560; --k-accent-2: #c79ea6; --k-on-accent: #ffffff; --k-bg-glow-1: rgba(160, 110, 120, 0.18); }
-.kesem-root[data-k-scheme="dark"][data-k-palette="bordo"] { --k-accent: #e0708e; --k-accent-2: #f0a0b6; --k-on-accent: #2a0612; --k-bg-glow-1: rgba(224, 112, 142, 0.14); }
-.kesem-root[data-k-scheme="dark"][data-k-palette="tozpembe"] { --k-accent: #e2a0b2; --k-accent-2: #f1c6d1; --k-on-accent: #2d1219; --k-bg-glow-1: rgba(226, 160, 178, 0.14); }
-.kesem-root[data-k-scheme="dark"][data-k-palette="gulkurusu"] { --k-accent: #d3a3ab; --k-accent-2: #e8c8cd; --k-on-accent: #2b1519; --k-bg-glow-1: rgba(211, 163, 171, 0.14); }
+.kesem-root[data-k-palette="bordo"], .k-palette[data-k-palette="bordo"] { --k-accent: #8c1d3f; --k-accent-2: #c0506f; --k-on-accent: #ffffff; --k-bg-glow-1: rgba(140, 29, 63, 0.14); }
+.kesem-root[data-k-palette="tozpembe"], .k-palette[data-k-palette="tozpembe"] { --k-accent: #a14660; --k-accent-2: #d99fb0; --k-on-accent: #ffffff; --k-bg-glow-1: rgba(190, 110, 135, 0.18); }
+.kesem-root[data-k-palette="gulkurusu"], .k-palette[data-k-palette="gulkurusu"] { --k-accent: #8a5560; --k-accent-2: #c79ea6; --k-on-accent: #ffffff; --k-bg-glow-1: rgba(160, 110, 120, 0.18); }
+.kesem-root[data-k-scheme="dark"][data-k-palette="bordo"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="bordo"] { --k-accent: #e0708e; --k-accent-2: #f0a0b6; --k-on-accent: #2a0612; --k-bg-glow-1: rgba(224, 112, 142, 0.14); }
+.kesem-root[data-k-scheme="dark"][data-k-palette="tozpembe"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="tozpembe"] { --k-accent: #e2a0b2; --k-accent-2: #f1c6d1; --k-on-accent: #2d1219; --k-bg-glow-1: rgba(226, 160, 178, 0.14); }
+.kesem-root[data-k-scheme="dark"][data-k-palette="gulkurusu"], .kesem-root[data-k-scheme="dark"] .k-palette[data-k-palette="gulkurusu"] { --k-accent: #d3a3ab; --k-accent-2: #e8c8cd; --k-on-accent: #2b1519; --k-bg-glow-1: rgba(211, 163, 171, 0.14); }
 
 /* ---- ek jetonlar ---- */
 .kesem-root, .kesem-root[data-k-scheme="light"] {
@@ -431,15 +431,17 @@ button.k-tx:active, .k-tx.active { background: var(--k-tonal); }
   --k-glass-line: rgba(255, 255, 255, 0.9);
   --k-glass-out: rgba(70, 45, 60, 0.12);
   --k-glass-shadow: 1px 2px 3px rgba(50, 30, 45, 0.12), 2px 4px 10px -4px rgba(50, 30, 45, 0.16);
+  --k-hero-ok: #5fe0b0; --k-hero-warn: #ffc247; --k-hero-bad: #ff8f9b;
   --k-hero-bg: #261d24; --k-hero-text: #fbf6f8; --k-hero-muted: rgba(251, 246, 248, 0.74); --k-hero-line: rgba(255, 255, 255, 0.14);
 }
 .kesem-root[data-k-scheme="dark"] {
-  --k-ok: #4fd6a0; --k-warn: #ffc247; --k-bad: #ff8b97;
+  --k-ok: #4fd6a0; --k-warn: var(--k-hero-warn); --k-bad: #ff8b97;
   --k-glass-fill: rgba(255, 255, 255, 0.07);
   --k-glass-hi: rgba(255, 255, 255, 0.16);
   --k-glass-line: rgba(255, 255, 255, 0.24);
   --k-glass-out: rgba(0, 0, 0, 0.55);
   --k-glass-shadow: 1px 2px 3px rgba(0, 0, 0, 0.45), 2px 4px 10px -4px rgba(0, 0, 0, 0.55);
+  --k-hero-ok: var(--k-ok); --k-hero-warn: var(--k-warn); --k-hero-bad: var(--k-bad);
   --k-hero-bg: #15101a; --k-hero-text: #f8f2f5; --k-hero-muted: rgba(248, 242, 245, 0.72); --k-hero-line: rgba(255, 255, 255, 0.12);
 }
 /* tek ışık kaynağı: ikinci (sağ üst) ışık kapatıldı */
@@ -514,12 +516,12 @@ button.k-tx:active, .k-tx.active { background: var(--k-tonal); }
 .k-pill.ok { color: var(--k-ok); } .k-pill.near, .k-pill.soon { color: var(--k-warn); } .k-pill.over, .k-pill.overdue { color: var(--k-bad); }
 .k-card.hero .k-pill { background-color: rgba(255,255,255,0.1); border-color: var(--k-hero-line); box-shadow: none; }
 .k-card.hero .k-pill.ok { color: var(--k-ok); } .k-card.hero .k-pill.near { color: var(--k-warn); } .k-card.hero .k-pill.over { color: var(--k-bad); }
-.kesem-root[data-k-scheme="light"] .k-card.hero .k-pill.ok, .kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-pill.ok { color: #5fe0b0; }
-.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-pill.near { color: #ffc247; }
-.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-pill.over { color: #ff8f9b; }
-.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-state-ok { color: #5fe0b0; }
-.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-state-near { color: #ffc247; }
-.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-state-over { color: #ff8f9b; }
+.kesem-root[data-k-scheme="light"] .k-card.hero .k-pill.ok, .kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-pill.ok { color: var(--k-hero-ok); }
+.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-pill.near { color: var(--k-hero-warn); }
+.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-pill.over { color: var(--k-hero-bad); }
+.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-state-ok { color: var(--k-hero-ok); }
+.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-state-near { color: var(--k-hero-warn); }
+.kesem-root:not([data-k-scheme="dark"]) .k-card.hero .k-state-over { color: var(--k-hero-bad); }
 
 /* eski ana sayfa kahramanı artık .k-card.hero — eski sınıf kullanılmıyor */
 .k-card-list { border-radius: 26px; background-image: radial-gradient(120% 60% at 0% 0%, var(--k-glass-hi), transparent 55%); background-color: var(--k-glass-fill); border-color: var(--k-glass-out); box-shadow: inset 1px 1px 0 var(--k-glass-line), var(--k-glass-shadow); }
@@ -546,9 +548,9 @@ button.k-tx:active, .k-tx.active { background: var(--k-tonal); }
 .k-ring[data-state="over"] .k-ring-bar { stroke: var(--k-bad); }
 .k-card.hero .k-ring-track { stroke: rgba(255, 255, 255, 0.16); }
 .k-card.hero .k-ring-bar { stroke: var(--k-accent-2); }
-.k-card.hero .k-ring[data-state="ok"] .k-ring-bar { stroke: #5fe0b0; }
-.k-card.hero .k-ring[data-state="near"] .k-ring-bar { stroke: #ffc247; }
-.k-card.hero .k-ring[data-state="over"] .k-ring-bar { stroke: #ff8f9b; }
+.k-card.hero .k-ring[data-state="ok"] .k-ring-bar { stroke: var(--k-hero-ok); }
+.k-card.hero .k-ring[data-state="near"] .k-ring-bar { stroke: var(--k-hero-warn); }
+.k-card.hero .k-ring[data-state="over"] .k-ring-bar { stroke: var(--k-hero-bad); }
 .k-ring-label { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
 .k-bar { height: 8px; border-radius: 999px; background: var(--k-tonal-2); overflow: hidden; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.12); }
 .k-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--k-accent); }
@@ -828,3 +830,38 @@ button.k-card:active { transform: scale(0.97); }
 .k-sheet-layer { z-index: 100; }
 .k-toast-wrap { z-index: 110; }
 .k-cover { z-index: 120; }
+
+/* palet kartı önizlemeleri her paletin KENDİ rengini gösterir (varsayılan Gül = kök jetonlar) */
+.kesem-root[data-k-scheme="light"] .k-palette[data-k-palette="gul"], .kesem-root:not([data-k-scheme="dark"]) .k-palette[data-k-palette="gul"] { --k-accent: #d63a72; --k-accent-2: #f0709a; }
+.k-cal-cell em { color: var(--k-text); font-weight: 600; }
+
+/* ---- tablet: ekranda TEK Kahraman — liste Kahramanı kalır, sağ detaydaki kart "Vurgulu"ya iner ---- */
+.k-md-detail .k-card.hero {
+  --k-hero-text: var(--k-text); --k-hero-muted: var(--k-muted); --k-hero-line: var(--k-glass-out);
+  color: var(--k-text); border: 1px solid color-mix(in srgb, var(--k-accent) 32%, var(--k-glass-out)); border-radius: 26px; padding: 14px 15px;
+  background: radial-gradient(120% 95% at 0% 0%, var(--k-glass-hi), transparent 58%), linear-gradient(160deg, color-mix(in srgb, var(--k-accent) 16%, transparent), transparent 75%) , var(--k-glass-fill);
+  box-shadow: inset 1px 1px 0 var(--k-glass-line), var(--k-glass-shadow);
+}
+.k-md-detail .k-card.hero::before { display: none; }
+.k-md-detail .k-card.hero .k-muted, .k-md-detail .k-card.hero .k-cap { color: var(--k-muted); }
+.k-md-detail .k-card.hero .k-accent-text { color: var(--k-accent-ink); }
+.k-md-detail .k-card.hero .k-pill { background-color: var(--k-glass-fill); border-color: var(--k-glass-out); box-shadow: inset 1px 1px 0 var(--k-glass-line); }
+.k-md-detail .k-card.hero .k-pill.ok { color: var(--k-ok); } .k-md-detail .k-card.hero .k-pill.near { color: var(--k-warn); } .k-md-detail .k-card.hero .k-pill.over { color: var(--k-bad); }
+.kesem-root:not([data-k-scheme="dark"]) .k-md-detail .k-card.hero .k-state-ok, .kesem-root:not([data-k-scheme="dark"]) .k-md-detail .k-card.hero .k-pill.ok { color: var(--k-ok); }
+.kesem-root:not([data-k-scheme="dark"]) .k-md-detail .k-card.hero .k-state-near, .kesem-root:not([data-k-scheme="dark"]) .k-md-detail .k-card.hero .k-pill.near { color: var(--k-warn); }
+.kesem-root:not([data-k-scheme="dark"]) .k-md-detail .k-card.hero .k-state-over, .kesem-root:not([data-k-scheme="dark"]) .k-md-detail .k-card.hero .k-pill.over { color: var(--k-bad); }
+.k-md-detail .k-card.hero .k-ring-track { stroke: var(--k-tonal-2); }
+.k-md-detail .k-card.hero .k-ring-bar { stroke: var(--k-accent-ink); }
+.k-md-detail .k-card.hero .k-ring[data-state="ok"] .k-ring-bar { stroke: var(--k-ok); }
+.k-md-detail .k-card.hero .k-ring[data-state="near"] .k-ring-bar { stroke: var(--k-warn); }
+.k-md-detail .k-card.hero .k-ring[data-state="over"] .k-ring-bar { stroke: var(--k-bad); }
+.k-md-detail .k-card.hero .k-bar { background: var(--k-tonal-2); }
+.k-md-detail .k-card.hero .k-bar > i { background: var(--k-accent-ink); }
+
+/* ---- tablet düzeltmeleri: dar sütunda takvim / halka merkezi / 1x1 rakamlar ---- */
+.k-cal-days { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.k-cal-cell { min-width: 0; padding: 0 1px; }
+.k-cal-cell em { font-size: 9.5px; max-width: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; }
+.k-donut-center b.k-num.md { font-size: 17px; max-width: 100%; }
+.k-donut-center b .k-amt.n12, .k-donut-center b .k-amt.n14 { font-size: 0.82em; }
+.k-bento .b-1x1 .k-num.md { font-size: 18px; }
