@@ -1,10 +1,9 @@
-// Routinix service worker.
-//  1) Chrome'un "yüklenebilirlik" kriteri için kayıtlı SW + fetch handler (bkz. src/hooks/useInstallPrompt.js).
-//  2) Harcama Takibi (/kesem) çevrimdışı AÇILABİLSİN diye YALNIZCA şunlar önbelleğe alınır:
-//       • /kesem sayfa kabuğu (index.html): AĞ-ÖNCELİKLİ → çevrimiçiyken HER ZAMAN güncel; ağ yoksa önbellek.
-//       • /assets/* : Vite içerik-hash'li (adı içeriğiyle değişir) → bayat içeriğe kilitleme riski YOK.
-//     Routinix'in kendi sayfaları ve diğer tüm istekler eskisi gibi doğrudan ağa gider (önbellek yok).
-const CACHE = "routinix-kesem-v1";
+// Harcama Takibi service worker.
+// Uygulama çevrimdışı AÇILABİLSİN diye YALNIZCA şunlar önbelleğe alınır:
+//   • sayfa kabuğu (index.html): AĞ-ÖNCELİKLİ → çevrimiçiyken HER ZAMAN güncel; ağ yoksa önbellek.
+//   • /assets/* : Vite içerik-hash'li (adı içeriğiyle değişir) → bayat içeriğe kilitleme riski YOK.
+// Diğer tüm istekler doğrudan ağa gider.
+const CACHE = "kesem-v2";
 const SHELL_KEY = "/__kesem_shell__";
 const MAX_ASSETS = 160;
 
@@ -12,13 +11,13 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) =>
   event.waitUntil(
     (async () => {
-      for (const k of await caches.keys()) if (k.startsWith("routinix-kesem-") && k !== CACHE) await caches.delete(k);
+      for (const k of await caches.keys()) if (k.startsWith("kesem-") && k !== CACHE) await caches.delete(k);
       await self.clients.claim();
     })()
   )
 );
 
-const isKesemNav = (req, url) => req.mode === "navigate" && (url.pathname === "/kesem" || url.pathname.startsWith("/kesem/"));
+const isKesemNav = (req) => req.mode === "navigate";
 
 async function trim(cache) {
   const keys = await cache.keys();
@@ -63,7 +62,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method === "GET") {
     const url = new URL(req.url);
     if (url.origin === self.location.origin) {
-      if (isKesemNav(req, url)) return event.respondWith(kesemShell(event));
+      if (isKesemNav(req)) return event.respondWith(kesemShell(event));
       if (url.pathname.startsWith("/assets/")) return event.respondWith(hashedAsset(req));
     }
   }

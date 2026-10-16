@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Home, MoreHorizontal, Plus, Receipt, ArrowLeft } from "lucide-react";
 import "./kesem.css";
 import { KesemProvider, useKesem } from "./state/store";
-import { useIsTablet, useKesemRoute } from "./state/route";
+import { useIsTablet, useKesemRoute, useMediaQuery } from "./state/route";
 import { AppCtx } from "./ui/appctx";
 import AddSheet from "./ui/AddSheet";
 import { Toast, EmptyState } from "./ui/common";
@@ -14,7 +14,6 @@ import LockScreen from "./ui/LockScreen";
 import Onboarding from "./ui/Onboarding";
 import { useMenuLabel } from "./config";
 import { emptyFilter } from "./model/filters";
-import { useTheme } from "../context/ThemeContext";
 
 const TABS = [
   { key: "", label: "Ana Sayfa", icon: Home },
@@ -35,7 +34,7 @@ function NavItem({ tab, active, onClick }) {
 
 function Shell({ onExit, userId }) {
   const k = useKesem();
-  const { theme } = useTheme();
+  const theme = useMediaQuery("(prefers-color-scheme: dark)") ? "dark" : "light";
   const isTablet = useIsTablet();
   const { segs, navigate, goBack } = useKesemRoute();
   const menuLabel = useMenuLabel();
@@ -79,17 +78,9 @@ function Shell({ onExit, userId }) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [k.ready, lockOn, autoLock, k.settings.privacy]);
 
-  // Kesem'i ayrı uygulama olarak ana ekrana eklemek için manifest + başlık (çıkışta geri alınır).
+  // Sekme/uygulama başlığı kullanıcının seçtiği ada uysun.
   useEffect(() => {
-    const link = document.querySelector('link[rel="manifest"]');
-    const prevHref = link?.getAttribute("href");
-    const prevTitle = document.title;
-    link?.setAttribute("href", "/kesem-manifest.json");
     document.title = menuLabel;
-    return () => {
-      if (prevHref) link?.setAttribute("href", prevHref);
-      document.title = prevTitle;
-    };
   }, [menuLabel]);
 
   // iOS/Android durum çubuğu rengi modülün kendi zeminine uysun; çıkışta eski hâli.
@@ -145,9 +136,6 @@ function Shell({ onExit, userId }) {
             {TABS.map((t) => (
               <NavItem key={t.key} tab={t} active={activeTab === t.key} onClick={() => navigate(t.key)} />
             ))}
-            <button type="button" className="k-side-exit" onClick={onExit}>
-              <ArrowLeft size={18} /> Routinix
-            </button>
           </nav>
         )}
         <main className="k-main" id="k-main">

@@ -6,7 +6,7 @@
 // buradan okur, ağır modül (KesemApp) ise yalnızca açılınca lazy yüklenir.
 import { useSyncExternalStore } from "react";
 
-export const KESEM_BASE = "/kesem";
+export const KESEM_BASE = "";
 export const KESEM_DEFAULT_MENU_LABEL = "Harcama Takibi";
 
 const LABEL_KEY = "kesem_menu_label";

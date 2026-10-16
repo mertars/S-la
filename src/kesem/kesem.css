@@ -1,7 +1,7 @@
 /* =====================================================================
    Kesem (Harcama Takibi) — modül teması.
    • TÜM renkler burada, CSS değişkeni olarak. Bileşenlerde hex YOK.
-   • Kapsam: .kesem-root (Routinix'in kendi temasına dokunmaz).
+   • Kapsam: .kesem-root (sayfanın geri kalanına dokunmaz).
    • Şema: data-k-scheme = light|dark, palet: data-k-palette.
    • Kategori/hesap renkleri: --kc-<anahtar> (bkz. ui/icons.jsx COLOR_KEYS).
    ===================================================================== */

@@ -29,7 +29,7 @@ const ReportCard = forwardRef(function ReportCard({ label, total, compare, top, 
         <div><span>Gelir</span><b><Amt>{formatMoney(income, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
         <div><span>{budget ? "Bütçe kullanımı" : "Harcamasız seri"}</span><b>{budget ? `%${Math.round(budget * 100)}` : `${streak} gün`}</b></div>
       </div>
-      <div className="k-report-foot">Routinix</div>
+      <div className="k-report-foot">Harcama Takibi</div>
     </div>
   );
 });

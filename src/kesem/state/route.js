@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { KESEM_BASE } from "../config";
 
-// Modül içi mini yönlendirici (Routinix'te react-router yok). Yollar gerçek
+// Modül içi mini yönlendirici (react-router kullanılmıyor). Yollar gerçek
 // URL'dir (/kesem/harcamalar/...), geri tuşu doğal çalışır, vercel.json zaten
 // tüm yolları index.html'e yönlendiriyor → yenileyince/PWA'yı yeniden
 // açınca aynı sayfa açılır.
@@ -19,7 +19,7 @@ export function useKesemRoute() {
     return () => window.removeEventListener("popstate", on);
   }, []);
   const navigate = useCallback((path, { replace = false } = {}) => {
-    const url = KESEM_BASE + (path ? "/" + path.replace(/^\/+/, "") : "");
+    const url = KESEM_BASE + (path ? "/" + path.replace(/^\/+/, "") : "/");
     if (url === window.location.pathname) return;
     const depth = (window.history.state?.depth ?? 0) + (replace ? 0 : 1);
     window.history[replace ? "replaceState" : "pushState"]({ kesem: true, depth }, "", url);

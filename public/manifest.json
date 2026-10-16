@@ -1,25 +1,17 @@
 {
-  "name": "Routinix",
-  "short_name": "Routinix",
-  "description": "Rutinlerini, planlarını ve odak zamanını tek yerden yönet.",
+  "id": "/",
+  "name": "Harcama Takibi",
+  "short_name": "Harcama",
+  "description": "Günlük harcamalarını, bütçeni ve birikimlerini takip et.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#030304",
-  "theme_color": "#030304",
+  "background_color": "#0c0a0d",
+  "theme_color": "#0c0a0d",
   "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Amt } from "../ui/Amt";
-import { ArrowLeft, CalendarClock, Flame, Plus, Repeat, Sparkles, Wallet, X, Zap } from "lucide-react";
+import { CalendarClock, Flame, Plus, Repeat, Sparkles, Wallet, X, Zap } from "lucide-react";
 import { Ring, STATE_LABEL, pct } from "../ui/parts";
 import { useFinance } from "../state/derived";
 import PageHeader from "../ui/PageHeader";
@@ -95,12 +95,6 @@ export default function HomePage() {
       <PageHeader
         title={app.menuLabel}
         subtitle={periodLabel(now, k.budget.startDay)}
-        left={
-          <button type="button" className="k-back" onClick={app.exit} aria-label="Routinix'e dön">
-            <ArrowLeft size={20} />
-            <span>Routinix</span>
-          </button>
-        }
         right={<UndoRedoButtons />}
       />
 

@@ -60,7 +60,7 @@ export const EMPTY_TX_EXTRAS = Object.freeze({
 
 export const DEFAULT_SETTINGS = Object.freeze({
   id: "settings",
-  mode: "auto", // auto = Routinix temasını izle | light | dark
+  mode: "auto", // auto = cihaz temasını izle | light | dark
   palette: "gul",
   lastCategory: {}, // { expense: id, income: id }
   lastAccount: null,

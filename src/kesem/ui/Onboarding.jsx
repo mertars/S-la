@@ -69,7 +69,7 @@ export default function Onboarding({ onFinish }) {
             <>
               <h1>Görünümünü seç</h1>
               <p>Değişiklik anında uygulanır; Ayarlar'dan her zaman değiştirebilirsin.</p>
-              <Segmented value={k.settings.mode} onChange={(v) => k.updateSettings({ mode: v })} options={[{ value: "auto", label: "Routinix gibi" }, { value: "light", label: "Gündüz" }, { value: "dark", label: "Gece" }]} label="Görünüm modu" />
+              <Segmented value={k.settings.mode} onChange={(v) => k.updateSettings({ mode: v })} options={[{ value: "auto", label: "Sistem gibi" }, { value: "light", label: "Gündüz" }, { value: "dark", label: "Gece" }]} label="Görünüm modu" />
               <div className="k-palettes" style={{ marginTop: 14 }}>
                 {PALETTES.map((p) => (
                   <button key={p.key} type="button" aria-pressed={k.settings.palette === p.key} className={`k-palette ${k.settings.palette === p.key ? "on" : ""}`} data-k-palette={p.key} onClick={() => k.updateSettings({ palette: p.key })}>

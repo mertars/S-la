@@ -140,7 +140,7 @@ export default function SettingsSection() {
 
       <Group title="Görünüm">
         <Row label="Tema"><span /></Row>
-        <Segmented value={settings.mode} onChange={(v) => k.updateSettings({ mode: v })} options={[{ value: "auto", label: "Routinix gibi" }, { value: "light", label: "Gündüz" }, { value: "dark", label: "Gece" }]} label="Görünüm modu" />
+        <Segmented value={settings.mode} onChange={(v) => k.updateSettings({ mode: v })} options={[{ value: "auto", label: "Sistem gibi" }, { value: "light", label: "Gündüz" }, { value: "dark", label: "Gece" }]} label="Görünüm modu" />
         <div className="k-palettes" style={{ marginTop: 12 }}>
           {PALETTES.map((p) => (
             <button key={p.key} type="button" aria-pressed={settings.palette === p.key} className={`k-palette ${settings.palette === p.key ? "on" : ""}`} data-k-palette={p.key} onClick={() => k.updateSettings({ palette: p.key })}>
@@ -196,10 +196,10 @@ export default function SettingsSection() {
       </Group>
 
       <Group title="Genel">
-        <Row label="Hamburger menüdeki ad"><span /></Row>
+        <Row label="Uygulama adı"><span /></Row>
         <div className="k-inline-form">
-          <input className="k-input" value={label} maxLength={28} onChange={(e) => setLabel(e.target.value)} aria-label="Menü adı" placeholder={KESEM_DEFAULT_MENU_LABEL} />
-          <button type="button" className="k-btn primary" onClick={() => { setMenuLabel(label); flash("Menü adı güncellendi."); }}>Kaydet</button>
+          <input className="k-input" value={label} maxLength={28} onChange={(e) => setLabel(e.target.value)} aria-label="Uygulama adı" placeholder={KESEM_DEFAULT_MENU_LABEL} />
+          <button type="button" className="k-btn primary" onClick={() => { setMenuLabel(label); flash("Uygulama adı güncellendi."); }}>Kaydet</button>
         </div>
         <button type="button" className="k-setlink" onClick={() => k.updateSettings({ onboarded: false, onbForce: true })}><RotateCcw size={18} /><span>Tanışma ekranını yeniden göster</span><ChevronRight size={16} /></button>
         <button type="button" className="k-setlink danger" onClick={() => setSheet("wipe")}><Trash2 size={18} /><span>Tüm verileri sil</span><ChevronRight size={16} /></button>

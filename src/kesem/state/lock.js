@@ -54,7 +54,7 @@ export async function bioRegister(userKey) {
   const cred = await navigator.credentials.create({
     publicKey: {
       challenge: challenge(),
-      rp: { name: "Routinix Harcama Takibi" },
+      rp: { name: "Harcama Takibi" },
       user: { id: enc.encode(String(userKey).slice(0, 60) || "misafir"), name: "kesem", displayName: "Harcama Takibi" },
       pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
       authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "discouraged" },

@@ -1,6 +1,6 @@
 # Kesem — Harcama Takibi (Parça 1/3)
 
-Routinix içinde, hamburger menüden açılan tam ekran harcama takibi modülü.
+Bağımsız, telefon öncelikli harcama takibi uygulaması (PWA). Veriler yalnızca cihazdaki IndexedDB'de durur; sunucu ya da hesap gerekmez.
 `/kesem/...` adresiyle de doğrudan açılır (PWA yenileme/derin bağlantı).
 
 ## Yapı
