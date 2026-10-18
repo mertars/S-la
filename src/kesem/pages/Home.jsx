@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Amt } from "../ui/Amt";
-import { CalendarClock, ChevronRight, CloudDownload, Flame, Heart, Plus, Repeat, Sparkles, X } from "lucide-react";
+import { CalendarClock, ChevronRight, CloudDownload, Flame, Heart, Plus, Repeat, Settings, Sparkles, X } from "lucide-react";
 import { useFinance } from "../state/derived";
 import TxRow from "../ui/TxRow";
 import { Bubble, Icon } from "../ui/icons";
@@ -129,6 +129,9 @@ export default function HomePage() {
           <div className="k-head-side right">
             <UndoRedoButtons />
             <PrivacyButton />
+            <button type="button" className="k-icon-btn plain" onClick={() => app.navigate("daha-fazla/ayarlar")} aria-label="Ayarlar">
+              <Settings size={20} strokeWidth={1.75} />
+            </button>
           </div>
         </div>
         <h1 className="k-hello-title">{greeting(n, now)}</h1>

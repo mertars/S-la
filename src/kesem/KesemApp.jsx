@@ -196,7 +196,11 @@ function Shell({ onExit, userId }) {
       m.removeAttribute("media");
     });
     document.documentElement.style.colorScheme = scheme;
-    document.documentElement.style.background = scheme === "dark" ? "#0c0a0d" : "#f6f2f4";
+    // Uygulamanın dışında kalan her alan (çentik/durum çubuğu, kaydırma esnemesi) üstte bant, altta zemin renginde: siyah şerit kalmasın
+    const base = scheme === "dark" ? "#0c0a0d" : "#f6f2f4";
+    const paint = `linear-gradient(${color} 0 50%, ${base} 50% 100%)`;
+    document.documentElement.style.background = paint;
+    document.body.style.background = paint;
   }, [scheme, k.settings.palette]);
 
   // Sayfa kayınca durum çubuğu şeridi görünür olsun (saat/şarj satırı içerik üstünde okunur kalsın)

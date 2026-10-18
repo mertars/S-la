@@ -6,7 +6,7 @@ import NumPad from "./NumPad";
 import DateTimePicker from "./DateTimePicker";
 import { Segmented } from "./common";
 import { CategoryEditor, AccountEditor } from "./editors";
-import { Bubble, Icon } from "./icons";
+import { Icon } from "./icons";
 import { downscaleImage } from "./receipt";
 import { useKesem } from "../state/store";
 import { displayInput, formatMoney, minorToInput, parseAmountInput, pressKey, rateOf, formatRate, CURRENCIES, currencySymbol } from "../model/money";
@@ -19,6 +19,7 @@ const KINDS = [
   { value: "expense", label: "Harcama" },
   { value: "income", label: "Gelir" },
 ];
+const TOP_N = 8;
 const isOther = (c) => c.id === "cat-diger" || c.id === "cat-diger-gelir";
 
 // Hızlı ekleme — uygulamanın en sık kullanılan ekranı.
@@ -69,6 +70,7 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
   const [paidBy, setPaidBy] = useState("me");
   const [photoErr, setPhotoErr] = useState("");
   const [flash, setFlash] = useState(null); // dokunulan kategori (kısa vurgulama)
+  const [allCats, setAllCats] = useState(false); // en çok kullanılan 8 kategori görünür; "Tümü" hepsini açar
   const touchedCat = useRef(!!initial.categoryId);
 
   // Mevcut fiş önizlemesi
@@ -106,6 +108,13 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
     }
     return list.sort((a, b) => isOther(a) - isOther(b) || (usage.get(b.id) || 0) - (usage.get(a.id) || 0) || a.order - b.order);
   }, [k, kind, usage, categoryId]);
+
+  const shownCats = useMemo(() => {
+    if (allCats || cats.length <= TOP_N) return cats;
+    const top = cats.slice(0, TOP_N);
+    const sel = categoryId && cats.find((c) => c.id === categoryId);
+    return sel && !top.includes(sel) ? [...top.slice(0, TOP_N - 1), sel] : top;
+  }, [cats, allCats, categoryId]);
 
   const amountMinor = parseAmountInput(amount);
   const subs = categoryId ? k.subCategories(categoryId) : [];
@@ -356,9 +365,11 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kısayol adı, ör. Sabah kahvesi" maxLength={28} aria-label="Kısayol adı" />
             </label>
           )}
-          <div className={`k-qa-amount ${cat ? "has-cat" : ""}`} style={cat ? { "--qa-c": `var(--kc-${cat.color})` } : undefined}>
+          <div className="k-qa-amount">
+            <div className="k-qa-amount-cat" aria-hidden={!cat}>
+              {cat ? <><Icon name={cat.icon} size={15} strokeWidth={1.8} /> {cat.name}{subId ? ` · ${k.catById(subId).name}` : ""}</> : kind === "income" ? "Gelir" : "Harcama"}
+            </div>
             <div className="k-qa-amount-row" aria-live="polite" aria-label={`Tutar ${amountMinor ? formatMoney(amountMinor, currency) : "girilmedi"}${cat ? ", " + cat.name : ""}`}>
-              {cat && <Bubble icon={cat.icon} color={cat.color} size={34} className="k-qa-amount-cat" />}
               <span className="k-qa-num" data-empty={!amount} key={amount.length}>
                 {kind === "income" && amount ? "+" : ""}
                 {displayInput(amount)}
@@ -389,8 +400,16 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
             </div>
           )}
           <p className="k-qa-hint" aria-live="polite">{hint}</p>
-          <div className="k-qa-grid" role="listbox" aria-label="Kategori">
-            {cats.map((c) => (
+          <div className="k-qa-cats-head">
+            <span>Kategori</span>
+            {cats.length > TOP_N && (
+              <button type="button" className="k-qa-more-btn" onClick={() => setAllCats((v) => !v)} aria-expanded={allCats}>
+                {allCats ? "Daha az" : `Tümü (${cats.length})`}
+              </button>
+            )}
+          </div>
+          <div className={`k-qa-grid ${allCats ? "all" : ""}`} role="listbox" aria-label="Kategori">
+            {shownCats.map((c) => (
               <button
                 key={c.id}
                 type="button"
@@ -401,14 +420,16 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
                 onClick={() => tapCategory(c.id)}
                 disabled={busy}
               >
-                <Bubble icon={c.icon} color={c.color} size={46} />
+                <Icon name={c.icon} size={17} strokeWidth={1.8} />
                 <span>{c.name}</span>
               </button>
             ))}
-            <button type="button" className="k-qa-cat add" onClick={() => setCatEditor({ kind })}>
-              <span className="k-qa-plus"><Plus size={22} strokeWidth={1.75} /></span>
-              <span>Yeni</span>
-            </button>
+            {(allCats || cats.length <= TOP_N) && (
+              <button type="button" className="k-qa-cat add" onClick={() => setCatEditor({ kind })}>
+                <Plus size={17} strokeWidth={1.8} />
+                <span>Yeni</span>
+              </button>
+            )}
           </div>
         </div>
       </Sheet>

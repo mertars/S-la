@@ -35,7 +35,7 @@ const SECTIONS = [
   { key: "kisayollar", icon: Zap, label: "Kısayollar ve şablonlar", desc: "Tek dokunuşla eklemeler" },
   { key: "silinenler", icon: Trash2, label: "Son silinenler", desc: "Silinen kayıtları geri getir" },
   { key: "kurlar", icon: Coins, label: "Para birimleri", desc: "₺, $, € ve manuel kur" },
-  { key: "ayarlar", icon: Settings, label: "Ayarlar ve yedek", desc: "İsimler, görünüm, gizlilik, kilit, yedek" },
+  { key: "ayarlar", icon: Settings, label: "Ayarlar", desc: "İsimler, görünüm, gizlilik, kilit, yedek" },
   { key: "hakkinda", icon: Heart, label: "Hakkında", desc: "" },
 ];
 
@@ -283,6 +283,13 @@ function Menu({ section }) {
   const short = (m) => formatMoneyText(m, "TRY", { hideZeroDecimals: true });
   const groups = [
     {
+      title: "Uygulama",
+      rows: [
+        { key: "ayarlar", icon: Settings, label: "Ayarlar", sub: "isimler, tema, kilit, yedek" },
+        { key: "hakkinda", icon: Heart, label: "Hakkında" },
+      ],
+    },
+    {
       title: "Para",
       rows: [
         { key: "butce", icon: Target, label: "Bütçe", sub: st.hasBudget ? `${short(Math.max(0, st.free))} kaldı` : "Belirle" },
@@ -303,13 +310,6 @@ function Menu({ section }) {
     {
       title: "Düzen",
       rows: SECTIONS.filter((x) => !["ayarlar", "hakkinda"].includes(x.key)).map((x) => ({ key: x.key, icon: x.icon, label: x.label, badge: x.key === "silinenler" && k.deletedTransactions.length ? k.deletedTransactions.length : null })),
-    },
-    {
-      title: "Uygulama",
-      rows: [
-        { key: "ayarlar", icon: Settings, label: "Ayarlar ve yedek", sub: k.lock.enabled ? "Kilit açık" : "" },
-        { key: "hakkinda", icon: Heart, label: "Hakkında" },
-      ],
     },
   ];
   return (
