@@ -3,14 +3,17 @@ import { Page, Bar } from "../ui/parts";
 import { useKesem } from "../state/store";
 import { useFinance } from "../state/derived";
 import { badgeList } from "../model/finance";
+import { useApp } from "../ui/appctx";
+import { streakLine } from "../texts";
 
 export default function BadgesPage({ onBack }) {
   const k = useKesem();
+  const app = useApp();
   const f = useFinance();
   const list = badgeList({ txs: k.transactions, streak: f.streak, budget: k.budget, goals: k.goals, debts: k.debts, now: f.now });
   const earned = list.filter((b) => b.earned).length;
   return (
-    <Page title="Rozetler" subtitle={`${earned} / ${list.length} kazanıldı`} onBack={onBack}>
+    <Page title="Rozetler" subtitle={`${earned} / ${list.length} rozet · en uzun seri ${f.streak.longest} gün`} onBack={onBack}>
       <div className="k-bento-wrap">
         <div className="k-bento">
           <section className="k-card hero b-3x1" aria-label="Harcamasız gün serisi">
@@ -22,7 +25,7 @@ export default function BadgesPage({ onBack }) {
               <Flame size={44} className="k-accent-text" aria-hidden="true" />
             </div>
             <div className="k-row-between" style={{ marginTop: 10 }}>
-              <span className="k-muted" style={{ fontSize: 13.5 }}>En uzun {f.streak.longest} gün</span>
+              <span className="k-muted" style={{ fontSize: 13.5 }}>{streakLine(app.names, f.streak)}</span>
               <span className={`k-pill ${f.streak.spentToday ? "near" : "ok"}`}>{f.streak.spentToday ? "Bugün harcama var" : "Bugün harcamasız"}</span>
             </div>
           </section>

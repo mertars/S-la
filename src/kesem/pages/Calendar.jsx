@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Amt } from "../ui/Amt";
-import { CalendarClock, ChevronLeft, ChevronRight, Check, SkipForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, SkipForward } from "lucide-react";
 import { Page } from "../ui/parts";
 import { Bubble } from "../ui/icons";
 import { EmptyState } from "../ui/common";
@@ -9,6 +9,7 @@ import { useKesem } from "../state/store";
 import { useFinance } from "../state/derived";
 import { formatMoney } from "../model/money";
 import { dayKey, monthLabel, relativeDayLabel, shiftMonth, shortDate, startOfDay } from "../model/dates";
+import { empty } from "../texts";
 
 const WD = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 export const KIND_ICON = { installment: "card", recurring: "receipt", debt: "wallet" };
@@ -107,7 +108,7 @@ export default function CalendarPage({ onBack }) {
         </div>
       </div>
       {items.length === 0 ? (
-        <EmptyState icon={<CalendarClock size={30} />} title="Takvim boş" text="Fatura ve abonelikleri “Abonelikler”den, taksitli alışverişi harcama ekranından ekleyebilirsin." />
+        <EmptyState art="calendar" {...empty(app.names).calendar} />
       ) : (
         [["Gecikmiş", overdue], ["Bu hafta", week], ["Daha sonra", later]].filter(([, l]) => l.length).map(([t, l]) => (
           <div key={t}>

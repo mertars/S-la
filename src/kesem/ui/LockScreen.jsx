@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Fingerprint, Lock } from "lucide-react";
+import { Fingerprint } from "lucide-react";
+import { Jar } from "./art";
+import { useApp } from "./appctx";
+import { LOCK_SUB, LOCK_WAIT, LOCK_WRONG, lockTitle } from "../texts";
 import { PinPad } from "./PinPad";
 import Sheet from "./Sheet";
 import { ConfirmSheetBody } from "./common";
@@ -9,6 +12,7 @@ import { useKesem } from "../state/store";
 // Tam ekran kilit — kilit açılana dek hiçbir sayfa/veri DOM'a konmaz.
 export default function LockScreen({ onUnlock }) {
   const k = useKesem();
+  const app = useApp();
   const lock = k.lock;
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
@@ -37,7 +41,7 @@ export default function LockScreen({ onUnlock }) {
       const wait = nextLockoutMs(fails);
       await k.saveLock({ fails, lockedUntil: wait ? Date.now() + wait : 0 });
       setNow(Date.now());
-      setError(wait ? "Çok fazla yanlış deneme. Biraz bekle." : "Yanlış PIN. Tekrar dene.");
+      setError(wait ? LOCK_WAIT : LOCK_WRONG);
       setTimeout(() => { setPin(""); setError(""); }, 650);
     }
     busy.current = false;
@@ -52,10 +56,10 @@ export default function LockScreen({ onUnlock }) {
   return (
     <div className="k-lock" role="dialog" aria-modal="true" aria-label="Uygulama kilitli">
       <div className="k-lock-inner">
-        <span className="k-tile-ico k-lock-ico"><Lock size={22} /></span>
-        <h1 className="k-lock-title">Harcama Takibi kilitli</h1>
+        <Jar level={0.42} size={64} coins={false} />
+        <h1 className="k-lock-title">{lockTitle(app.names)}</h1>
         <p className="k-lock-sub" role={error || remaining ? "alert" : undefined}>
-          {remaining ? `${remaining} sn sonra tekrar deneyebilirsin` : error || "PIN'ini gir"}
+          {remaining ? `${remaining} sn sonra tekrar deneyebilirsin` : error || LOCK_SUB}
         </p>
         <PinPad length={lock.len || 4} value={pin} onChange={setPin} onComplete={check} error={!!error} disabled={remaining > 0}
           extra={bio ? <button type="button" className="k-key" onClick={tryBio} aria-label="Biyometrik ile aç"><Fingerprint size={24} /></button> : null} />
@@ -64,7 +68,7 @@ export default function LockScreen({ onUnlock }) {
       {confirmWipe && (
         <Sheet open onClose={() => setConfirmWipe(false)} title="PIN'ini mi unuttun?" size="sm">
           <ConfirmSheetBody
-            text="PIN geri getirilemez. Devam edersen Harcama Takibi verilerinin TAMAMI bu cihazdan silinir ve modül sıfırdan başlar. (Yedeğin varsa sonra içe aktarabilirsin.)"
+            text="PIN geri getirilemez. Devam edersen kumbaradaki verilerin TAMAMI bu cihazdan silinir ve uygulama sıfırdan başlar. (Yedeğin varsa sonra içe aktarabilirsin.)"
             confirmLabel="Tüm verileri sil"
             onCancel={() => setConfirmWipe(false)}
             onConfirm={async () => { setConfirmWipe(false); await k.wipeAll(); onUnlock(); }}

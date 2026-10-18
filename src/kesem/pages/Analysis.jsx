@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { BarChart3, Calendar as CalIcon, ChevronLeft, ChevronRight, CreditCard, Download, Share2, Store, TrendingDown, TrendingUp, Trophy } from "lucide-react";
-import { Page, Bar } from "../ui/parts";
+import { Page, Bar, ListAnalysisSwitch } from "../ui/parts";
 import { Amt } from "../ui/Amt";
 import { Donut, LineChart, Heatmap } from "../ui/charts";
 import ReportCard from "../ui/ReportCard";
@@ -15,6 +15,7 @@ import { accountTotals, categoryBreakdown, compareText, comparePeriods, dailyTot
 import { emptyFilter } from "../model/filters";
 import { formatCompact, formatMoney, formatMoneyText } from "../model/money";
 import { addDays, dayLabel, daysBetween, dayKey, periodLabel, periodRange, shiftPeriod, shortDate, startOfDay } from "../model/dates";
+import { empty } from "../texts";
 
 const WD = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 const TREND = [{ value: "day", label: "Günlük" }, { value: "week", label: "Haftalık" }, { value: "month", label: "Aylık" }];
@@ -214,10 +215,10 @@ export default function AnalysisPage() {
   );
 
   const nav = (
-    <div className="k-month" style={{ marginBottom: 12 }}>
-      <button type="button" className="k-icon-btn" onClick={() => setPeriodTs(shiftPeriod(periodTs, -1, startDay))} aria-label="Önceki dönem"><ChevronLeft size={18} /></button>
+    <div className="k-month" style={{ margin: "10px 0 8px -10px" }}>
+      <button type="button" className="k-icon-btn plain" onClick={() => setPeriodTs(shiftPeriod(periodTs, -1, startDay))} aria-label="Önceki dönem"><ChevronLeft size={20} /></button>
       <button type="button" className="k-month-label" onClick={() => setPeriodTs(Date.now())} disabled={isNow} aria-label="Bu döneme dön">{periodLabel(periodTs, startDay)}</button>
-      <button type="button" className="k-icon-btn" onClick={() => setPeriodTs(shiftPeriod(periodTs, 1, startDay))} disabled={isNow} aria-label="Sonraki dönem"><ChevronRight size={18} /></button>
+      <button type="button" className="k-icon-btn plain" onClick={() => setPeriodTs(shiftPeriod(periodTs, 1, startDay))} disabled={isNow} aria-label="Sonraki dönem"><ChevronRight size={20} /></button>
     </div>
   );
 
@@ -227,8 +228,8 @@ export default function AnalysisPage() {
 
   if (!hasData && !txs.length) {
     return (
-      <Page title="Analiz" subtitle="Harcamalarını anla">
-        <EmptyState icon={<BarChart3 size={32} />} title="Analiz için kayıt gerekli" text="İlk harcamalarını ekledikçe kategori dağılımı, trend, takvim ve akıllı özetler burada belirir." action={<button type="button" className="k-btn primary" onClick={() => app.openAdd({})}>İlk harcamayı ekle</button>} />
+      <Page title="Harcamalar" below={<ListAnalysisSwitch value="analiz" />}>
+        <EmptyState art="chart" {...empty(app.names).analysis} action={<button type="button" className="k-btn primary" onClick={() => app.openAdd({})}>İlk harcamayı ekle</button>} />
       </Page>
     );
   }
@@ -263,7 +264,7 @@ export default function AnalysisPage() {
   );
 
   return (
-    <Page title="Analiz" subtitle={periodLabel(periodTs, startDay)}>
+    <Page title="Harcamalar" below={<ListAnalysisSwitch value="analiz" />}>
       {nav}
       {app.isTablet ? tabletBody : phoneBody}
       {dayOpen && day && <Sheet open onClose={() => setDayOpen(false)} title="Günün harcamaları" size="md"><div style={{ padding: "0 16px 24px" }}>{dayNode}</div></Sheet>}

@@ -1,16 +1,21 @@
 import { useState } from "react";
-import { Check, ChevronRight, Sparkles } from "lucide-react";
+import { Check, ChevronRight, Palette, Tags, Wallet } from "lucide-react";
 import { AmountField } from "./parts";
 import { Segmented } from "./common";
 import { Icon } from "./icons";
 import { PALETTES } from "./palettes";
 import { useKesem } from "../state/store";
+import { useApp } from "./appctx";
+import { Piggy } from "./art";
+import { welcome } from "../texts";
 
 // İlk açılışta 3 adım: kategoriler → bütçe → tema. Her adımda "Atla"; en fazla 3 adım.
 export default function Onboarding({ onFinish }) {
   const k = useKesem();
+  const app = useApp();
+  const w = welcome(app.names);
   const tops = k.topCategories("expense");
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(-1); // -1 = karşılama
   const [keep, setKeep] = useState(() => new Set(tops.map((c) => c.id)));
   const [budget, setBudget] = useState(0);
   const [startDay, setStartDay] = useState(1);
@@ -27,8 +32,27 @@ export default function Onboarding({ onFinish }) {
   };
   const next = () => (step < 2 ? setStep(step + 1) : finish(true));
 
+  if (step === -1) {
+    return (
+      <div className="k-onb" role="dialog" aria-modal="true" aria-label={w.title}>
+        <div className="k-onb-inner k-onb-welcome">
+          <div className="k-onb-body">
+            <Piggy size={168} />
+            <h1>{w.title}</h1>
+            <p>{w.text}</p>
+            <p className="k-sign">{w.sign}</p>
+          </div>
+          <div className="k-onb-foot">
+            <button type="button" className="k-btn primary grow" style={{ flex: 1 }} onClick={() => setStep(0)}>Başlayalım <ChevronRight size={17} /></button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const StepIcon = [Tags, Wallet, Palette][step];
+
   return (
-    <div className="k-onb" role="dialog" aria-modal="true" aria-label="Hoş geldin">
+    <div className="k-onb" role="dialog" aria-modal="true" aria-label="Kurulum">
       <div className="k-onb-inner">
         <div className="k-row-between">
           <span className="k-onb-dots" role="img" aria-label={`Adım ${step + 1} / 3`}>{[0, 1, 2].map((i) => <i key={i} className={i === step ? "on" : i < step ? "done" : ""} />)}</span>
@@ -36,11 +60,11 @@ export default function Onboarding({ onFinish }) {
         </div>
 
         <div className="k-onb-body" key={step}>
-          <span className="k-tile-ico k-onb-ico"><Sparkles size={22} /></span>
+          <span className="k-onb-ico"><StepIcon size={22} strokeWidth={1.75} /></span>
           {step === 0 && (
             <>
               <h1>Hangi harcamaları takip edeceksin?</h1>
-              <p>Kullanmayacaklarını kapat; sonra Ayarlar'dan istediğin zaman geri getirebilir, kendi kategorini ekleyebilirsin.</p>
+              <p>Kullanmayacaklarını kapat. Sonradan geri açabilir, kendi kategorini ekleyebilirsin.</p>
               <div className="k-chips wrap" role="group" aria-label="Kategoriler">
                 {tops.map((c) => (
                   <button key={c.id} type="button" aria-pressed={keep.has(c.id)} className={`k-chip ${keep.has(c.id) ? "on" : ""}`} style={{ "--c": `var(--kc-${c.color})` }} onClick={() => toggle(c.id)}>
@@ -82,7 +106,7 @@ export default function Onboarding({ onFinish }) {
         </div>
 
         <div className="k-onb-foot">
-          {step > 0 && <button type="button" className="k-btn tonal" onClick={() => setStep(step - 1)}>Geri</button>}
+          <button type="button" className="k-btn tonal" onClick={() => setStep(step - 1)}>Geri</button>
           <button type="button" className="k-btn primary grow" style={{ flex: 1 }} onClick={next}>{step < 2 ? <>Devam <ChevronRight size={17} /></> : "Başla"}</button>
         </div>
       </div>

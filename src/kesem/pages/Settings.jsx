@@ -5,12 +5,12 @@ import { Segmented } from "../ui/common";
 import { PinSetupSheet, PinVerifySheet } from "../ui/PinSheets";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
-import { KESEM_DEFAULT_MENU_LABEL, setMenuLabel } from "../config";
 import { PALETTES } from "../ui/palettes";
 import { bioAvailable, bioRegister } from "../state/lock";
 import { BACKUP_VERSION, COLLECTION_LABEL, buildBackup, buildCsv, planImport, validateBackup, COLLECTIONS } from "../model/backup";
 import { blobToDataUrl, dataUrlToBlob, downloadBlob } from "../ui/download";
 import { dateTimeLabel, trLower } from "../model/dates";
+import { backupDone, DEFAULT_NAMES } from "../texts";
 
 const AUTO = [{ value: "0", label: "Hemen" }, { value: "60", label: "1 dk" }, { value: "300", label: "5 dk" }];
 const stamp = () => new Date().toISOString().slice(0, 10);
@@ -87,7 +87,9 @@ export default function SettingsSection() {
   const app = useApp();
   const { settings } = k;
   const lock = k.lock;
-  const [label, setLabel] = useState(app.menuLabel);
+  const [sila, setSila] = useState(settings.names?.sila || DEFAULT_NAMES.sila);
+  const [mert, setMert] = useState(settings.names?.mert || DEFAULT_NAMES.mert);
+  const namesChanged = sila.trim() !== app.names.sila || mert.trim() !== app.names.mert;
   const [sheet, setSheet] = useState(null); // setup | change | disable | wipe
   const [bioOk, setBioOk] = useState(false);
   const [withReceipts, setWithReceipts] = useState(true);
@@ -113,7 +115,7 @@ export default function SettingsSection() {
     const out = buildBackup({ data, meta, receipts });
     downloadBlob(`harcama-yedek-${stamp()}.json`, new Blob([JSON.stringify(out)], { type: "application/json" }));
     await k.updateSettings({ lastBackupAt: Date.now() });
-    flash(`Yedek indirildi (${data.transactions.length} işlem${receipts?.length ? `, ${receipts.length} fiş` : ""}).`);
+    flash(backupDone(app.names, data.transactions.length) + (receipts?.length ? ` (${receipts.length} fiş dahil)` : ""));
   };
   const pickFile = async (e) => {
     const f = e.target.files?.[0];
@@ -137,6 +139,18 @@ export default function SettingsSection() {
   return (
     <div className="k-setpage">
       {msg && <div className="k-card accent k-setmsg" role="status">{msg}</div>}
+
+      <Group title="İsimler">
+        <p className="k-hint" style={{ margin: "4px 2px 10px" }}>Uygulamadaki selam ve küçük notlar bu adlarla yazılır.</p>
+        <label className="k-labeled"><span>Kullanan</span><input className="k-input" value={sila} maxLength={20} onChange={(e) => setSila(e.target.value)} aria-label="Kullanan kişinin adı" autoComplete="off" /></label>
+        <label className="k-labeled"><span>Hazırlayan</span><input className="k-input" value={mert} maxLength={20} onChange={(e) => setMert(e.target.value)} aria-label="Hazırlayan kişinin adı" autoComplete="off" /></label>
+        {namesChanged && (
+          <button type="button" className="k-btn primary full k-gap" disabled={!sila.trim() || !mert.trim()} onClick={async () => { await k.updateSettings({ names: { sila: sila.trim(), mert: mert.trim() } }); flash("İsimler güncellendi."); }}>İsimleri kaydet</button>
+        )}
+        <Row label="Özel gün" hint="O gün Bugün ekranında küçük bir not çıkar">
+          <input type="date" className="k-input k-input-date" value={settings.specialDay ? `2000-${settings.specialDay}` : ""} onChange={(e) => k.updateSettings({ specialDay: e.target.value ? e.target.value.slice(5) : null })} aria-label="Özel gün" />
+        </Row>
+      </Group>
 
       <Group title="Görünüm">
         <Row label="Tema"><span /></Row>
@@ -196,11 +210,6 @@ export default function SettingsSection() {
       </Group>
 
       <Group title="Genel">
-        <Row label="Uygulama adı"><span /></Row>
-        <div className="k-inline-form">
-          <input className="k-input" value={label} maxLength={28} onChange={(e) => setLabel(e.target.value)} aria-label="Uygulama adı" placeholder={KESEM_DEFAULT_MENU_LABEL} />
-          <button type="button" className="k-btn primary" onClick={() => { setMenuLabel(label); flash("Uygulama adı güncellendi."); }}>Kaydet</button>
-        </div>
         <button type="button" className="k-setlink" onClick={() => k.updateSettings({ onboarded: false, onbForce: true })}><RotateCcw size={18} /><span>Tanışma ekranını yeniden göster</span><ChevronRight size={16} /></button>
         <button type="button" className="k-setlink danger" onClick={() => setSheet("wipe")}><Trash2 size={18} /><span>Tüm verileri sil</span><ChevronRight size={16} /></button>
       </Group>
@@ -221,7 +230,7 @@ function WipeSheet({ onClose, onWipe }) {
   return (
     <Sheet open onClose={onClose} title="Tüm veriler silinsin mi?" size="sm">
       <div className="k-confirm">
-        <p>Harcamaların, kategorilerin, bütçen, kumbaraların ve kilit dahil Harcama Takibi verilerinin TAMAMI bu cihazdan silinir. Bu işlem geri alınamaz. Önce yedek almanı öneririz.</p>
+        <p>Harcamaların, kategorilerin, bütçen, kumbaraların ve kilit dahil kumbaradaki verilerin TAMAMI bu cihazdan silinir. Bu işlem geri alınamaz. Önce yedek almanı öneririz.</p>
         <p className="k-hint" style={{ margin: "10px 0 6px" }}>Onaylamak için <b>SİL</b> yaz:</p>
         <input className="k-input" value={t} onChange={(e) => setT(e.target.value)} aria-label="Onay metni" autoCapitalize="characters" />
         <div className="k-confirm-actions"><button type="button" className="k-btn tonal" onClick={onClose}>Vazgeç</button><button type="button" className="k-btn danger" disabled={!ok} onClick={onWipe}>Hepsini sil</button></div>

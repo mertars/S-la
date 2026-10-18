@@ -29,7 +29,7 @@ function ensurePopListener() {
   });
 }
 
-export default function Sheet({ open, onClose, title, children, footer, tall = false, size = "md", labelledBy }) {
+export default function Sheet({ open, onClose, title, head, children, footer, tall = false, size = "md", labelledBy, className = "", bodyClass = "" }) {
   const ref = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -53,32 +53,19 @@ export default function Sheet({ open, onClose, title, children, footer, tall = f
       if (e.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };
-    // Klavye: görsel görünüm alanına göre katman yüksekliği (iOS'ta klavye alanı örtmesin) + odaktaki alanı göster
-    const vv = window.visualViewport;
-    const rootEl = document.querySelector(".kesem-root");
-    const applyVV = () => {
-      if (!vv || !rootEl) return;
-      rootEl.style.setProperty("--k-vvh", `${vv.height}px`);
-      rootEl.style.setProperty("--k-vvt", `${vv.offsetTop}px`);
-    };
+    // Klavye: kök zaten görünen alana oturuyor (KesemApp useAppViewport); burada yalnızca odaktaki alanı göster.
     const onFocusIn = (e) => {
       const el = e.target;
       if (ref.current?.contains(el) && /^(INPUT|TEXTAREA)$/.test(el.tagName)) setTimeout(() => el.scrollIntoView?.({ block: "center", behavior: "smooth" }), 320);
     };
-    applyVV();
-    vv?.addEventListener("resize", applyVV);
-    vv?.addEventListener("scroll", applyVV);
     document.addEventListener("focusin", onFocusIn);
     window.addEventListener("keydown", onKey);
     ref.current?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("focusin", onFocusIn);
-      vv?.removeEventListener("resize", applyVV);
-      vv?.removeEventListener("scroll", applyVV);
       const i = sheetStack.indexOf(token);
       if (i >= 0) sheetStack.splice(i, 1);
-      if (!sheetStack.length && rootEl) { rootEl.style.removeProperty("--k-vvh"); rootEl.style.removeProperty("--k-vvt"); }
       // odağı sayfayı açan öğeye geri ver
       if (prevFocus && document.contains(prevFocus) && prevFocus.focus) setTimeout(() => prevFocus.focus({ preventScroll: true }), 0);
       // Kendi eklediğimiz geçmiş girişini sessizce geri al (geri tuşuyla
@@ -131,18 +118,18 @@ export default function Sheet({ open, onClose, title, children, footer, tall = f
         aria-modal="true"
         aria-label={title}
         aria-labelledby={labelledBy}
-        className={`k-sheet k-sheet-${size} ${tall ? "k-sheet-tall" : ""}`}
+        className={`k-sheet k-sheet-${size} ${tall ? "k-sheet-tall" : ""} ${className}`}
       >
         <div className="k-sheet-head" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
           <span className="k-grabber" />
           <div className="k-sheet-title-row">
-            <h2 className="k-sheet-title">{title}</h2>
+            {head || <h2 className="k-sheet-title">{title}</h2>}
             <button type="button" className="k-icon-btn" onClick={onClose} aria-label="Kapat">
               <X size={18} />
             </button>
           </div>
         </div>
-        <div className="k-sheet-body">{children}</div>
+        <div className={`k-sheet-body ${bodyClass}`}>{children}</div>
         {footer}
       </div>
     </div>,

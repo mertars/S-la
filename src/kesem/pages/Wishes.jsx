@@ -9,6 +9,7 @@ import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { baseOf, formatMoney } from "../model/money";
 import { shortDate } from "../model/dates";
+import { empty } from "../texts";
 
 const PRIO = [{ value: "3", label: "Çok istiyorum" }, { value: "2", label: "İstiyorum" }, { value: "1", label: "Belki" }];
 
@@ -73,7 +74,7 @@ export default function WishesPage({ onBack }) {
           ))}
         </div>
       </div>
-      {open.length === 0 && <EmptyState icon={<Gift size={30} />} title="Listen boş" text="Almak istediklerini fiyatıyla ekle. “Aldım” dediğinde harcamaya dönüşür." action={<button type="button" className="k-btn primary" onClick={() => setEdit({})}><Plus size={18} /> İstek ekle</button>} />}
+      {open.length === 0 && <EmptyState art="gift" {...empty(app.names).wishes} action={<button type="button" className="k-btn primary" onClick={() => setEdit({})}><Plus size={18} /> İstek ekle</button>} />}
       {bought.length > 0 && (
         <>
           <div className="k-section-title">Aldıkların</div>

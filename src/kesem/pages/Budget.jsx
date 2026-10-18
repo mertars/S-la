@@ -4,6 +4,7 @@ import { Plus, Wallet } from "lucide-react";
 import { Page, Ring, AmountSheet, STATE_LABEL, pct } from "../ui/parts";
 import Sheet from "../ui/Sheet";
 import { Bubble } from "../ui/icons";
+import { Jar } from "../ui/art";
 import { useKesem } from "../state/store";
 import { useFinance } from "../state/derived";
 import { formatMoney } from "../model/money";
@@ -30,9 +31,7 @@ export default function BudgetPage({ onBack }) {
           <section className="k-card hero b-3x1" style={{ "--ht": 2, "--wt": 6 }} aria-label="Genel bütçe">
             {st.hasBudget ? (
               <div className="k-row-between" style={{ gap: 16 }}>
-                <Ring value={st.ratio} size={104} stroke={10} state={st.state} label={`Bütçenin ${pct(st.ratio)} kullanıldı`}>
-                  {pct(st.ratio)}
-                </Ring>
+                <Jar level={1 - Math.min(1, st.ratio)} size={92} state={st.state} label={`Bütçenin ${pct(st.ratio)} kullanıldı`} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="k-cap">Aylık bütçe</div>
                   <button type="button" className="k-num lg" onClick={() => setEdit({ type: "total" })} aria-label="Aylık bütçeyi düzenle" style={{ display: "block", textAlign: "left" }}>
@@ -44,16 +43,16 @@ export default function BudgetPage({ onBack }) {
             ) : (
               <div className="k-stack">
                 <div className="k-cap">Aylık bütçe</div>
-                <p className="k-muted" style={{ fontSize: 15 }}>Bir tutar belirle; her gün ne kadar harcayabileceğini hesaplayalım.</p>
+                <p className="k-muted" style={{ fontSize: 15 }}>Aylık bir tutar belirle; her gün ne kadar harcayabileceğini kavanozda gösteririm.</p>
                 <button type="button" className="k-btn primary" onClick={() => setEdit({ type: "total" })}>Bütçeni belirle</button>
               </div>
             )}
             {st.hasBudget && (
-              <div className="k-row-between" style={{ marginTop: 14, gap: 8, alignItems: "flex-start" }}>
-                <div><div className="k-cap">Harcanan</div><b className="k-num md"><Amt>{formatMoney(st.spent, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
-                <div><div className="k-cap">Planlı</div><b className="k-num md"><Amt>{formatMoney(st.committed, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
-                <div><div className="k-cap">Kalan</div><b className={`k-num md ${st.free < 0 ? "k-state-over" : ""}`}><Amt>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
-              </div>
+              <dl className="k-focus-facts">
+                <div><dt>Harcanan</dt><dd><Amt>{formatMoney(st.spent, "TRY", { hideZeroDecimals: true })}</Amt></dd></div>
+                <div><dt>Planlı</dt><dd><Amt>{formatMoney(st.committed, "TRY", { hideZeroDecimals: true })}</Amt></dd></div>
+                <div><dt>Kalan</dt><dd className={st.free < 0 ? "k-state-over" : ""}><Amt>{formatMoney(st.free, "TRY", { hideZeroDecimals: true })}</Amt></dd></div>
+              </dl>
             )}
           </section>
 

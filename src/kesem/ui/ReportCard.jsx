@@ -2,13 +2,15 @@ import { forwardRef } from "react";
 import { Amt } from "./Amt";
 import { Bubble } from "./icons";
 import { formatMoney } from "../model/money";
+import { useApp } from "./appctx";
 
 // Paylaşılabilir aylık rapor kartı. html-to-image ile PNG'ye çevrilir; bu yüzden backdrop-filter KULLANMAZ,
 // yalnızca tema jetonları (CSS değişkenleri) — seçili tema/gündüz-gece ile aynı görünür.
 const ReportCard = forwardRef(function ReportCard({ label, total, compare, top, insights, budget, streak, income }, ref) {
+  const app = useApp();
   return (
     <div ref={ref} className="k-report" data-k-report>
-      <div className="k-report-brand">Harcama Takibi · {label}</div>
+      <div className="k-report-brand">{app.appName} · {label}</div>
       <div className="k-report-cap">Toplam harcama</div>
       <div className="k-report-total"><Amt>{formatMoney(total, "TRY", { hideZeroDecimals: true })}</Amt></div>
       {compare && <div className="k-report-pill">{compare}</div>}
@@ -29,7 +31,7 @@ const ReportCard = forwardRef(function ReportCard({ label, total, compare, top, 
         <div><span>Gelir</span><b><Amt>{formatMoney(income, "TRY", { hideZeroDecimals: true })}</Amt></b></div>
         <div><span>{budget ? "Bütçe kullanımı" : "Harcamasız seri"}</span><b>{budget ? `%${Math.round(budget * 100)}` : `${streak} gün`}</b></div>
       </div>
-      <div className="k-report-foot">Harcama Takibi</div>
+      <div className="k-report-foot">{app.names.sila} için</div>
     </div>
   );
 });

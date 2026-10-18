@@ -69,6 +69,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
   privacy: false, // tutarları bulanıklaştır
   onboarded: false, // tanışma ekranı görüldü/atlandı
   lastBackupAt: null,
+  // Yeniden tasarım (Sıla'nın Kumbarası)
+  names: { sila: "Sıla", mert: "Mert" }, // metinlerde geçen adlar (Ayarlar > İsimler)
+  specialDay: null, // "AA-GG" — o gün ana sayfada küçük bir not
+  celebrated: [], // kutlaması gösterilmiş kumbara id'leri
+  firstGoalNoteSeen: false,
 });
 
 export const uid = () =>

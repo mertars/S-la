@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Amt } from "../ui/Amt";
-import { ChevronLeft, ChevronRight, Copy, Edit3, Receipt, Repeat, Search, SlidersHorizontal, Trash2, X, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Edit3, Repeat, Search, SlidersHorizontal, Trash2, X, Zap } from "lucide-react";
 import FilterSheet from "../ui/FilterSheet";
 import { applyFilter, activeFilterCount, emptyFilter, isGlobalScope } from "../model/filters";
 import PageHeader from "../ui/PageHeader";
+import { ListAnalysisSwitch } from "../ui/parts";
 import TxRow from "../ui/TxRow";
 import { Bubble } from "../ui/icons";
 import { EmptyState, Segmented, UndoRedoButtons } from "../ui/common";
@@ -12,6 +13,7 @@ import { useKesem } from "../state/store";
 import { groupByDay, totals } from "../model/stats";
 import { formatMoney, formatMoneyText } from "../model/money";
 import { dayKey, dayLabel, fullDateTime, periodLabel, periodRange, shiftPeriod, shortDate } from "../model/dates";
+import { empty } from "../texts";
 
 const FILTERS = [
   { value: "all", label: "Tümü" },
@@ -47,7 +49,7 @@ export function TxDetail({ id, onBack }) {
     return (
       <div className="k-page">
         <PageHeader title="Kayıt" onBack={onBack} />
-        <EmptyState icon={<Receipt size={30} />} title="Kayıt bulunamadı" text="Silinmiş ya da taşınmış olabilir." />
+        <EmptyState art="receipt" {...empty(app.names).notFound} />
       </div>
     );
   }
@@ -115,7 +117,7 @@ export function TxDetail({ id, onBack }) {
           </button>
         </div>
       )}
-      <div className="k-actions">
+      <div className="k-actions k-tx-actions">
         <button type="button" className="k-btn primary" onClick={() => app.openAdd({ editId: tx.id, initial: tx })}>
           <Edit3 size={17} /> Düzenle
         </button>
@@ -123,7 +125,7 @@ export function TxDetail({ id, onBack }) {
           <Repeat size={17} /> Tekrarla
         </button>
         <button type="button" className="k-btn tonal" onClick={() => app.openAdd({ initial: { ...tx, occurredAt: undefined, receiptId: null } })}>
-          <Copy size={17} /> Düzenleyerek tekrarla
+          <Copy size={17} /> Kopyala
         </button>
         <button
           type="button"
@@ -193,27 +195,24 @@ export default function ExpensesPage({ selectedId }) {
 
   const master = (
     <div className="k-page">
-      <PageHeader title="Harcamalar" subtitle={global ? "Filtre sonuçları (tüm tarihler)" : periodLabel(monthTs, startDay)} right={<UndoRedoButtons />} />
-      <section className="k-card hero" aria-label="Liste özeti">
-        <div className="k-row-between" style={{ alignItems: "flex-end" }}>
-          <div>
-            <div className="k-cap">{f.kind === "income" ? "Toplam gelir" : "Toplam gider"}</div>
-            <div className="k-num xl"><Amt>{formatMoney(f.kind === "income" ? sums.income : sums.expense, "TRY", { hideZeroDecimals: true })}</Amt></div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div className="k-cap">{f.kind === "all" ? "Gelir" : "Kayıt"}</div>
-            <b className="k-num md">{f.kind === "all" ? <Amt>{formatMoney(sums.income, "TRY", { hideZeroDecimals: true })}</Amt> : list.length}</b>
-          </div>
-        </div>
-      </section>
-      <div className="k-toolbar k-gap">
-        {!global && (
+      <PageHeader title="Harcamalar" right={<UndoRedoButtons />} below={<ListAnalysisSwitch value="liste" />} />
+      <section className="k-card hero k-exp-hero" aria-label="Liste özeti">
+        {global ? (
+          <div className="k-cap">Filtre sonuçları · tüm tarihler</div>
+        ) : (
           <div className="k-month">
-            <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, -1, startDay))} aria-label="Önceki dönem"><ChevronLeft size={18} /></button>
-            <button type="button" className="k-month-label" onClick={() => setMonthTs(Date.now())} disabled={isNow} aria-label="Bu döneme dön">{periodLabel(monthTs, startDay)}</button>
-            <button type="button" className="k-icon-btn" onClick={() => setMonthTs(shiftPeriod(monthTs, 1, startDay))} disabled={isNow} aria-label="Sonraki dönem"><ChevronRight size={18} /></button>
+            <button type="button" className="k-icon-btn plain" onClick={() => setMonthTs(shiftPeriod(monthTs, -1, startDay))} aria-label="Önceki dönem"><ChevronLeft size={20} /></button>
+            <button type="button" className="k-month-label" onClick={() => setMonthTs(Date.now())} disabled={isNow} aria-label={isNow ? "Bu dönem" : "Bu döneme dön"}>{periodLabel(monthTs, startDay)}</button>
+            <button type="button" className="k-icon-btn plain" onClick={() => setMonthTs(shiftPeriod(monthTs, 1, startDay))} disabled={isNow} aria-label="Sonraki dönem"><ChevronRight size={20} /></button>
           </div>
         )}
+        <div className="k-num xxl"><Amt>{formatMoney(f.kind === "income" ? sums.income : sums.expense, "TRY", { hideZeroDecimals: true })}</Amt></div>
+        <div className="k-muted k-exp-sub">
+          {f.kind === "income" ? "toplam gelir" : "toplam harcama"} · {list.length} kayıt
+          {f.kind === "all" && sums.income > 0 && <> · gelir <Amt>{formatMoney(sums.income, "TRY", { hideZeroDecimals: true })}</Amt></>}
+        </div>
+      </section>
+      <div className="k-toolbar">
         <div className="k-row-between" style={{ gap: 8 }}>
           <label className="k-search" style={{ flex: 1 }}>
             <Search size={16} />
@@ -233,7 +232,7 @@ export default function ExpensesPage({ selectedId }) {
         )}
       </div>
       {groups.length === 0 ? (
-        <EmptyState icon={<Receipt size={30} />} title={global ? "Sonuç bulunamadı" : "Bu dönemde kayıt yok"} text={global ? "Filtreleri gevşetmeyi ya da farklı bir kelime denemeyi dene." : "Yeni bir kayıt eklemek için + tuşuna dokun."} action={global ? <button type="button" className="k-btn tonal" onClick={() => setF(emptyFilter())}>Filtreleri temizle</button> : undefined} />
+        <EmptyState art={global ? "search" : "receipt"} {...(global ? empty(app.names).search : empty(app.names).expenses)} action={global ? <button type="button" className="k-btn tonal" onClick={() => setF(emptyFilter())}>Filtreleri temizle</button> : undefined} />
       ) : (
         <>
           {shown.map((g) => {
@@ -275,7 +274,7 @@ export default function ExpensesPage({ selectedId }) {
           <TxDetail id={selectedId} onBack={() => app.goBack("harcamalar")} />
         ) : (
           <div className="k-page">
-            <EmptyState icon={<Receipt size={30} />} title="Bir kayıt seç" text="Ayrıntılarını burada görürsün; düzenleyebilir, tekrarlayabilir ya da silebilirsin." />
+            <EmptyState art="receipt" {...empty(app.names).pick} />
           </div>
         )}
       </div>

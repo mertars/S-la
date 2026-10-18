@@ -1,1 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e0568a"/><stop offset="1" stop-color="#b02a5e"/></linearGradient></defs><rect width="512" height="512" fill="#0c0a0d"/><rect x="56" y="56" width="400" height="400" rx="112" fill="url(#g)"/><g fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"><path d="M142 208h228a24 24 0 0 1 24 24v118a24 24 0 0 1-24 24H142a24 24 0 0 1-24-24V202a40 40 0 0 1 40-40h188"/><circle cx="340" cy="291" r="6" fill="#fff"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbeef3"/><stop offset="1" stop-color="#f3d9e3"/></linearGradient>
+    <clipPath id="jar"><path d="M196 150 C196 168 140 172 140 218 L140 384 C140 412 160 428 188 428 L324 428 C352 428 372 412 372 384 L372 218 C372 172 316 168 316 150 Z"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="0" fill="url(#bg)"/>
+  <g clip-path="url(#jar)">
+    <path d="M100 286 C150 270 196 270 246 286 C296 302 342 302 412 286 L412 460 L100 460 Z" fill="#e7a3b8"/>
+    <path d="M100 286 C150 270 196 270 246 286 C296 302 342 302 412 286" fill="none" stroke="#c0506f" stroke-width="8" stroke-linecap="round"/>
+    <g fill="#f4c26b" stroke="#b9822a" stroke-width="5">
+      <ellipse cx="200" cy="404" rx="30" ry="11"/><ellipse cx="270" cy="404" rx="30" ry="11"/><ellipse cx="236" cy="384" rx="30" ry="11"/><ellipse cx="306" cy="384" rx="30" ry="11"/>
+    </g>
+  </g>
+  <path d="M196 120 L196 150 C196 168 140 172 140 218 L140 384 C140 412 160 428 188 428 L324 428 C352 428 372 412 372 384 L372 218 C372 172 316 168 316 150 L316 120" fill="none" stroke="#8c1d3f" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M170 236 L170 352" stroke="#ffffff" stroke-opacity="0.75" stroke-width="12" stroke-linecap="round"/>
+  <rect x="182" y="82" width="148" height="44" rx="14" fill="#c0506f" stroke="#8c1d3f" stroke-width="10"/>
+  <path d="M256 236 C256 212 222 206 222 232 C222 252 256 268 256 268 C256 268 290 252 290 232 C290 206 256 212 256 236 Z" fill="#8c1d3f"/>
+</svg>
