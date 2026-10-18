@@ -226,6 +226,6 @@ export const specialDayNote = (n) => ({ title: `${n.mertAbl} bir not`, text: `Bu
 // =====================================================================
 // Ekleme ekranı ipuçları
 // =====================================================================
-export const ADD_HINT_EMPTY = "Tutarı yaz, sonra kategoriye dokun.";
+export const ADD_HINT_EMPTY = "Tutarı yaz, kategoriye dokun.";
 export const ADD_HINT_READY = "Şimdi kategoriye dokun, eklensin.";
 export const ADD_HINT_PICKED = "Hazır. Ekle'ye bas ya da kategoriyi değiştir.";

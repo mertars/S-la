@@ -174,13 +174,44 @@ function Shell({ onExit, userId }) {
     }
   }, [title, names, k.ready]);
 
-  // Durum çubuğu rengi uygulamanın zeminine uysun
+  // Tarayıcı/durum çubuğu rengi = başlık bandının rengi (iki "theme-color" etiketi de; gece modunda siyah şerit kalmasın)
   useEffect(() => {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    meta?.setAttribute("content", scheme === "dark" ? "#0c0a0d" : "#f6f2f4");
+    const root = rootRef.current;
+    let color = scheme === "dark" ? "#0c0a0d" : "#f6f2f4";
+    if (root) {
+      const probe = document.createElement("i");
+      probe.style.color = "var(--k-band-1)";
+      root.appendChild(probe);
+      const c = getComputedStyle(probe).color;
+      probe.remove();
+      // "color(srgb r g b)" ya da "rgb(r, g, b)" → #rrggbb (meta etiketi her tarayıcıda okusun)
+      const n = (c.match(/[\d.]+/g) || []).map(Number);
+      if (n.length >= 3) {
+        const k255 = c.startsWith("color(") ? 255 : 1;
+        color = "#" + n.slice(0, 3).map((x) => Math.round(Math.min(255, x * k255)).toString(16).padStart(2, "0")).join("");
+      }
+    }
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      m.setAttribute("content", color);
+      m.removeAttribute("media");
+    });
     document.documentElement.style.colorScheme = scheme;
     document.documentElement.style.background = scheme === "dark" ? "#0c0a0d" : "#f6f2f4";
-  }, [scheme]);
+  }, [scheme, k.settings.palette]);
+
+  // Sayfa kayınca durum çubuğu şeridi görünür olsun (saat/şarj satırı içerik üstünde okunur kalsın)
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const onScroll = (e) => {
+      const t = e.target;
+      if (!t || !t.classList || !(t.classList.contains("k-main") || t.classList.contains("k-md-master") || t.classList.contains("k-md-detail"))) return;
+      const v = t.scrollTop > 8 ? "1" : "0";
+      if (root.dataset.kScrolled !== v) root.dataset.kScrolled = v;
+    };
+    root.addEventListener("scroll", onScroll, true);
+    return () => root.removeEventListener("scroll", onScroll, true);
+  }, []);
 
   // Sayfa değişince başa kaydır
   useEffect(() => {
@@ -216,8 +247,9 @@ function Shell({ onExit, userId }) {
 
   return (
     <AppCtx.Provider value={app}>
-      <div ref={rootRef} className="kesem-root" data-k-scheme={scheme} data-k-palette={k.settings.palette} data-k-tablet={isTablet ? "1" : "0"} data-k-privacy={k.settings.privacy ? "1" : "0"}>
+      <div ref={rootRef} className="kesem-root" data-k-scheme={scheme} data-k-palette={k.settings.palette} data-k-tablet={isTablet ? "1" : "0"} data-k-privacy={k.settings.privacy ? "1" : "0"} data-k-cover={locked || showOnb || covered || !k.ready ? "1" : "0"}>
         <div className="k-bg" aria-hidden="true" />
+        <div className="k-statusbar" aria-hidden="true" />
         {locked && <LockScreen onUnlock={() => setUnlocked(true)} />}
         {isTablet && k.ready && (
           <nav className="k-side" aria-label="Gezinme">

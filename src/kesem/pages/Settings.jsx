@@ -97,6 +97,13 @@ export default function SettingsSection() {
   const [imp, setImp] = useState(null);
   const fileRef = useRef(null);
   useEffect(() => { bioAvailable().then(setBioOk); }, []);
+  // Tarayıcı verileri "kalıcı" olarak işaretledi mi? (işaretliyse depolama dolsa bile kendiliğinden silinmez)
+  const [persisted, setPersisted] = useState(null);
+  useEffect(() => {
+    const st = navigator.storage;
+    if (!st?.persisted) return;
+    st.persisted().then((v) => (v ? v : st.persist?.() ?? false)).then((v) => setPersisted(!!v)).catch(() => setPersisted(false));
+  }, []);
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(""), 4000); };
 
   const ctx = () => ({ catName: (id) => k.catById(id).name, accName: (id) => k.accById(id).name, tagName: (id) => k.tagById(id)?.name, rates: k.rates });
@@ -198,6 +205,7 @@ export default function SettingsSection() {
       </Group>
 
       <Group title="Veri ve yedek">
+        <Row label="Veriler nerede?" hint={persisted ? "Bu cihazda, kalıcı olarak. Uygulamayı kapatmak, telefonu kapatıp açmak silmez." : persisted === false ? "Bu cihazda. Tarayıcı kalıcı izin vermedi: ana ekrana ekle ve düzenli yedek al." : "Bu cihazda saklanıyor."}><ShieldCheck size={18} className={persisted ? "k-state-ok" : "k-muted"} /></Row>
         <Row label="Son yedek" hint={settings.lastBackupAt ? dateTimeLabel(settings.lastBackupAt) : "Henüz yedek almadın"}><span /></Row>
         <Row label="Fişleri yedeğe ekle" hint="Dosya büyüyebilir"><Switch checked={withReceipts} onChange={setWithReceipts} label="Fişleri yedeğe ekle" /></Row>
         <div className="k-setbtns">

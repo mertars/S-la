@@ -5,6 +5,7 @@ import FilterSheet from "../ui/FilterSheet";
 import { applyFilter, activeFilterCount, emptyFilter, isGlobalScope } from "../model/filters";
 import PageHeader from "../ui/PageHeader";
 import { ListAnalysisSwitch } from "../ui/parts";
+import { Fit } from "../ui/Fit";
 import TxRow from "../ui/TxRow";
 import { Bubble } from "../ui/icons";
 import { EmptyState, Segmented, UndoRedoButtons } from "../ui/common";
@@ -206,7 +207,7 @@ export default function ExpensesPage({ selectedId }) {
             <button type="button" className="k-icon-btn plain" onClick={() => setMonthTs(shiftPeriod(monthTs, 1, startDay))} disabled={isNow} aria-label="Sonraki dönem"><ChevronRight size={20} /></button>
           </div>
         )}
-        <div className="k-num xxl"><Amt>{formatMoney(f.kind === "income" ? sums.income : sums.expense, "TRY", { hideZeroDecimals: true })}</Amt></div>
+        <Fit className="k-num xxl"><Amt>{formatMoney(f.kind === "income" ? sums.income : sums.expense, "TRY", { hideZeroDecimals: true })}</Amt></Fit>
         <div className="k-muted k-exp-sub">
           {f.kind === "income" ? "toplam gelir" : "toplam harcama"} · {list.length} kayıt
           {f.kind === "all" && sums.income > 0 && <> · gelir <Amt>{formatMoney(sums.income, "TRY", { hideZeroDecimals: true })}</Amt></>}

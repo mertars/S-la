@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Amt } from "./Amt";
-import { Camera, ChevronRight, Clock, CreditCard, Hash, Layers, Plus, Store, StickyNote, Trash2, Users, X, Zap, Image as ImageIcon } from "lucide-react";
+import { CalendarDays, Camera, ChevronRight, Clock, CreditCard, Hash, Layers, Plus, Store, StickyNote, Trash2, Users, X, Zap, Image as ImageIcon } from "lucide-react";
 import Sheet from "./Sheet";
 import NumPad from "./NumPad";
 import DateTimePicker from "./DateTimePicker";
@@ -12,7 +12,7 @@ import { useKesem } from "../state/store";
 import { displayInput, formatMoney, minorToInput, parseAmountInput, pressKey, rateOf, formatRate, CURRENCIES, currencySymbol } from "../model/money";
 import { installmentAmounts, splitEqual } from "../model/finance";
 import { AmountField } from "./parts";
-import { dateTimeLabel, formatTime, trLower } from "../model/dates";
+import { addDays, dateTimeLabel, daysBetween, formatTime, fromDateInput, shortDate, toDateInput, trLower } from "../model/dates";
 import { ADD_HINT_EMPTY, ADD_HINT_PICKED, ADD_HINT_READY } from "../texts";
 
 const KINDS = [
@@ -120,6 +120,29 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
   const canMore = instant && kind === "expense";
   const cat = categoryId ? k.catById(categoryId) : null;
   const acc = accountId ? k.accById(accountId) : null;
+  // Geçmişe dönük ekleme: gün seçilir, saat şimdiki saat olarak kalır (Ayrıntılar'dan değişir).
+  const dayOff = whenTouched ? Math.max(0, daysBetween(when, Date.now())) : 0;
+  const atDay = (dayTs) => {
+    const n = new Date();
+    const d = new Date(dayTs);
+    d.setHours(n.getHours(), n.getMinutes(), 0, 0);
+    return d.getTime();
+  };
+  const pickDay = (off) => {
+    if (off === 0) {
+      setWhen(Date.now());
+      setWhenTouched(false);
+    } else {
+      setWhen(atDay(addDays(Date.now(), -off)));
+      setWhenTouched(true);
+    }
+  };
+  const pickDate = (dayTs) => {
+    const off = daysBetween(dayTs, Date.now());
+    if (off <= 0) return pickDay(0);
+    setWhen(atDay(dayTs));
+    setWhenTouched(true);
+  };
 
   const switchKind = (nk) => {
     if (nk === kind) return;
@@ -333,19 +356,38 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kısayol adı, ör. Sabah kahvesi" maxLength={28} aria-label="Kısayol adı" />
             </label>
           )}
-          <div className="k-qa-amount" aria-live="polite" aria-label={`Tutar ${amountMinor ? formatMoney(amountMinor, currency) : "girilmedi"}`}>
-            <span className="k-qa-num" data-empty={!amount}>
-              {kind === "income" && amount ? "+" : ""}
-              {displayInput(amount)}
-            </span>
-            <span className="k-qa-sym">{sym}</span>
+          <div className={`k-qa-amount ${cat ? "has-cat" : ""}`} style={cat ? { "--qa-c": `var(--kc-${cat.color})` } : undefined}>
+            <div className="k-qa-amount-row" aria-live="polite" aria-label={`Tutar ${amountMinor ? formatMoney(amountMinor, currency) : "girilmedi"}${cat ? ", " + cat.name : ""}`}>
+              {cat && <Bubble icon={cat.icon} color={cat.color} size={34} className="k-qa-amount-cat" />}
+              <span className="k-qa-num" data-empty={!amount} key={amount.length}>
+                {kind === "income" && amount ? "+" : ""}
+                {displayInput(amount)}
+              </span>
+              <span className="k-qa-sym">{sym}</span>
+            </div>
+            <button type="button" className="k-qa-meta" onClick={() => setDetails(true)} aria-label="Ayrıntılar: ödeme yöntemi, saat, yer, not, etiket, fotoğraf">
+              {!amount && !isTpl && !editId && <span className="k-qa-tip">{ADD_HINT_EMPTY}</span>}
+              {(amount || isTpl || editId) && <><span><CreditCard size={14} aria-hidden="true" /> {acc?.name || "Ödeme"}</span>
+              <span><Clock size={14} aria-hidden="true" /> {formatTime(whenTouched ? when : Date.now())}</span>
+              </>}
+              {extrasCount > 0 && <span className="k-qa-badge">+{extrasCount}</span>}
+              <span className="k-qa-more">Ayrıntılar <ChevronRight size={14} aria-hidden="true" /></span>
+            </button>
           </div>
-          <button type="button" className="k-qa-meta" onClick={() => setDetails(true)} aria-label="Ayrıntılar: zaman, ödeme yöntemi, yer, not, etiket, fotoğraf">
-            <span><Clock size={14} aria-hidden="true" /> {whenTouched ? dateTimeLabel(when) : `Şimdi · ${formatTime(Date.now())}`}</span>
-            <span><CreditCard size={14} aria-hidden="true" /> {acc?.name || "Ödeme"}</span>
-            {extrasCount > 0 && <span className="k-qa-badge">+{extrasCount}</span>}
-            <span className="k-qa-more">Ayrıntılar <ChevronRight size={14} aria-hidden="true" /></span>
-          </button>
+          {!isTpl && (
+            <div className="k-qa-days" role="radiogroup" aria-label="Gün">
+              {[0, 1, 2].map((d) => (
+                <button key={d} type="button" role="radio" aria-checked={dayOff === d} className={`k-qa-day ${dayOff === d ? "on" : ""}`} onClick={() => pickDay(d)}>
+                  {d === 0 ? "Bugün" : d === 1 ? "Dün" : "Önceki gün"}
+                </button>
+              ))}
+              <label className={`k-qa-day pick ${dayOff > 2 ? "on" : ""}`} aria-checked={dayOff > 2} role="radio">
+                <CalendarDays size={15} aria-hidden="true" />
+                <span>{dayOff > 2 ? shortDate(when) : "Tarih"}</span>
+                <input type="date" max={toDateInput(Date.now())} value={toDateInput(whenTouched ? when : Date.now())} onChange={(e) => e.target.value && pickDate(fromDateInput(e.target.value))} aria-label="Geçmiş bir tarih seç" />
+              </label>
+            </div>
+          )}
           <p className="k-qa-hint" aria-live="polite">{hint}</p>
           <div className="k-qa-grid" role="listbox" aria-label="Kategori">
             {cats.map((c) => (

@@ -5,6 +5,7 @@ import { useFinance } from "../state/derived";
 import TxRow from "../ui/TxRow";
 import { Bubble, Icon } from "../ui/icons";
 import { Jar } from "../ui/art";
+import { Fit } from "../ui/Fit";
 import { EmptyState, UndoRedoButtons } from "../ui/common";
 import { PrivacyButton } from "../ui/PageHeader";
 import { useApp } from "../ui/appctx";
@@ -142,12 +143,12 @@ export default function HomePage() {
               {st.hasBudget ? "Bugün harcayabileceğin" : "Bu dönem harcadığın"}
               {todayState && <span className={`k-pill ${todayState}`}>{TODAY_STATE_LABEL[todayState]}</span>}
             </span>
-            <span className="k-num xxl">
+            <Fit className="k-num xxl">
               <Amt>{money(st.hasBudget ? Math.max(0, st.todayLeft) : month.expense)}</Amt>
-            </span>
+            </Fit>
             <span className="k-focus-line">{budgetLine(n, st, (m) => formatMoneyText(m, "TRY", { hideZeroDecimals: true }))}</span>
           </span>
-          <Jar level={level} size={96} state={todayState} label={st.hasBudget ? `Bugünkü payın %${Math.round(Math.min(1, level) * 100)}'i duruyor` : undefined} />
+          <Jar level={level} size={100} state={todayState === "ok" ? undefined : todayState} label={st.hasBudget ? `Bugünkü payın %${Math.round(Math.min(1, level) * 100)}'i duruyor` : undefined} />
         </button>
         {st.hasBudget ? (
           <dl className="k-focus-facts">
@@ -220,7 +221,7 @@ export default function HomePage() {
           {isSpecial && <NoteRow icon={Heart} tone="special" {...specialDayNote(n)} />}
           {goal && gp && (
             <button type="button" className="k-note-row" onClick={() => app.navigate(`kumbara/${goal.id}`)}>
-              <span className="k-note-ico jar"><Jar level={gp.pct} size={26} coins={false} /></span>
+              <span className="k-note-ico jar"><Jar level={gp.pct} size={24} coins={false} tag={false} color={goal.color} /></span>
               <span className="k-note-main">
                 <b>{goal.name}</b>
                 <span>%{Math.round(gp.pct * 100)} doldu · <Amt>{money(gp.saved)}</Amt> / <Amt>{money(goal.targetMinor)}</Amt></span>

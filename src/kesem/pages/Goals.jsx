@@ -5,6 +5,7 @@ import { Page, AmountSheet, AmountField, SplitView } from "../ui/parts";
 import Sheet from "../ui/Sheet";
 import { Bubble, ICONS, COLOR_KEYS } from "../ui/icons";
 import { Jar } from "../ui/art";
+import { Fit } from "../ui/Fit";
 import { EmptyState } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
@@ -84,7 +85,7 @@ function Celebration({ goal, withNote, onClose }) {
   return (
     <Sheet open onClose={onClose} title={goal.name} size="sm" footer={<div className="k-footbar"><button type="button" className="k-btn primary full" onClick={onClose}>Teşekkürler</button></div>}>
       <div className="k-celebrate">
-        <div className="k-celebrate-art"><Jar level={1} size={120} state="ok" /></div>
+        <div className="k-celebrate-art"><Jar level={1} size={130} color={goal.color} /></div>
         <h3>{c.title}</h3>
         <p>{c.text}</p>
         {note && (
@@ -127,9 +128,9 @@ function GoalDetail({ id, onBack }) {
   return (
     <Page title={goal.name} subtitle={goalLine(n, p)} onBack={onBack} right={<button type="button" className="k-icon-btn plain" aria-label="Düzenle" onClick={() => setSheet({ type: "edit" })}><Edit3 size={19} strokeWidth={1.75} /></button>}>
       <section className="k-card hero k-goal-hero" aria-label={`${goal.name}: ${pctText(p.pct)} doldu`}>
-        <Jar level={p.pct} size={132} state={p.done ? "ok" : undefined} />
+        <Jar level={p.pct} size={150} color={goal.color} label={`${goal.name}: ${pctText(p.pct)} doldu`} />
         <div className="k-goal-hero-text">
-          <span className="k-num xxl">{pctText(p.pct)}</span>
+          <Fit className="k-num xxl">{pctText(p.pct)}</Fit>
           <span className="k-goal-amounts"><Amt>{money(p.saved, goal.currency)}</Amt> / <Amt>{money(goal.targetMinor, goal.currency)}</Amt></span>
           {!p.done && <span className="k-muted">Kalan <Amt>{money(p.remaining, goal.currency)}</Amt></span>}
         </div>
@@ -181,10 +182,10 @@ export default function GoalsPage({ id }) {
       ) : (
         <>
           <section className="k-card hero k-goal-hero" aria-label="Toplam birikim">
-            <Jar level={totalTarget ? totalSaved / totalTarget : 0} size={110} />
+            <Jar level={totalTarget ? totalSaved / totalTarget : 0} size={132} />
             <div className="k-goal-hero-text">
               <span className="k-cap">Toplam biriken</span>
-              <span className="k-num xxl"><Amt>{money(totalSaved)}</Amt></span>
+              <Fit className="k-num xxl"><Amt>{money(totalSaved)}</Amt></Fit>
               <span className="k-muted">Hedeflerin toplamı <Amt>{money(totalTarget)}</Amt></span>
             </div>
           </section>
@@ -192,8 +193,8 @@ export default function GoalsPage({ id }) {
             {k.goals.map((g) => {
               const p = goalProjection(g);
               return (
-                <button key={g.id} type="button" className={`k-jar-tile ${id === g.id ? "on" : ""}`} onClick={() => go(g.id)} aria-current={id === g.id ? "true" : undefined} aria-label={`${g.name}, ${pctText(p.pct)} doldu`}>
-                  <Jar level={p.pct} size={58} coins={p.pct > 0.1} state={p.done ? "ok" : undefined} />
+                <button key={g.id} type="button" className={`k-jar-tile ${id === g.id ? "on" : ""}`} style={{ "--c": `var(--kc-${g.color})` }} onClick={() => go(g.id)} aria-current={id === g.id ? "true" : undefined} aria-label={`${g.name}, ${pctText(p.pct)} doldu`}>
+                  <Jar level={p.pct} size={64} color={g.color} />
                   <span className="k-jar-name">{g.name}</span>
                   <span className="k-jar-pct">{pctText(p.pct)}</span>
                   <span className="k-jar-sub"><Amt>{money(p.saved, g.currency)}</Amt> / {formatMoneyText(g.targetMinor, g.currency, { hideZeroDecimals: true })}</span>

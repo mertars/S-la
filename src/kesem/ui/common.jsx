@@ -30,17 +30,23 @@ export function EmptyState({ art = "receipt", title, text, action, compact = fal
   );
 }
 
+// Geri al / Yinele: yalnızca bir işlem varken görünür, ne yaptığı yazıyla belli.
 export function UndoRedoButtons() {
   const { canUndo, canRedo, undo, redo } = useKesem();
   if (!canUndo && !canRedo) return null;
   return (
     <div className="k-undo-group">
-      <button type="button" className="k-icon-btn" disabled={!canUndo} onClick={undo} aria-label="Geri al">
-        <Undo2 size={18} />
-      </button>
-      <button type="button" className="k-icon-btn" disabled={!canRedo} onClick={redo} aria-label="Yinele">
-        <Redo2 size={18} />
-      </button>
+      {canUndo && (
+        <button type="button" className="k-undo" onClick={undo} aria-label="Son işlemi geri al">
+          <Undo2 size={16} strokeWidth={2} aria-hidden="true" />
+          <span>Geri al</span>
+        </button>
+      )}
+      {canRedo && (
+        <button type="button" className="k-icon-btn" onClick={redo} aria-label="Geri alınanı yinele">
+          <Redo2 size={17} strokeWidth={2} />
+        </button>
+      )}
     </div>
   );
 }
