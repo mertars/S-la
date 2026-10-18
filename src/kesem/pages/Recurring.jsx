@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Amt } from "../ui/Amt";
-import { Plus, Trash2, Repeat, Layers, Pause, Play, Check, SkipForward } from "lucide-react";
+import { Plus, Trash2, Pause, Play, Check, SkipForward } from "lucide-react";
 import { Page, AmountField, Bar, SplitView } from "../ui/parts";
 import Sheet from "../ui/Sheet";
 import { Bubble, Icon } from "../ui/icons";
@@ -10,6 +10,7 @@ import { useKesem } from "../state/store";
 import { installmentProgress, monthlyEquivalent, occurrencesBetween, yearlyEquivalent } from "../model/finance";
 import { formatMoney, rateOf, CURRENCIES, currencySymbol, formatMoneyText } from "../model/money";
 import { addDays, daysBetween, fromDateInput, relativeDayLabel, shortDate, startOfDay, toDateInput } from "../model/dates";
+import { empty } from "../texts";
 
 const TYPES = [
   { value: "subscription", label: "Abonelik" },
@@ -117,7 +118,7 @@ function RuleDetail({ id, onBack }) {
   const k = useKesem();
   const rule = k.recurrings.find((r) => r.id === id);
   const [edit, setEdit] = useState(false);
-  if (!rule) return <Page title="Ödeme" onBack={onBack}><EmptyState icon={<Repeat size={30} />} title="Bulunamadı" /></Page>;
+  if (!rule) return <Page title="Ödeme" onBack={onBack}><EmptyState art="repeat" title="Bulunamadı" /></Page>;
   const now = Date.now();
   const skipped = new Set(rule.skipped || []);
   const upcoming = occurrencesBetween(rule, addDays(startOfDay(now), rule.autoPost ? 0 : -90), addDays(now, 400)).filter((o) => !skipped.has(o.index) && !k.txExists(o.key)).slice(0, 4);
@@ -166,7 +167,7 @@ function RuleDetail({ id, onBack }) {
 function PlanDetail({ id, onBack }) {
   const k = useKesem();
   const plan = k.installments.find((p) => p.id === id);
-  if (!plan) return <Page title="Taksit" onBack={onBack}><EmptyState icon={<Layers size={30} />} title="Bulunamadı" /></Page>;
+  if (!plan) return <Page title="Taksit" onBack={onBack}><EmptyState art="layers" title="Bulunamadı" /></Page>;
   const now = Date.now();
   const pr = installmentProgress(plan, now);
   return (
@@ -226,7 +227,7 @@ export default function RecurringPage({ tab = "abonelikler", id }) {
             <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>Yıllık <Amt>{formatMoney(monthTotal * 12, "TRY", { hideZeroDecimals: true })}</Amt> · {rows.filter((x) => !x.r.paused).length} ödeme</div>
           </section>
           {rows.length === 0 ? (
-            <EmptyState icon={<Repeat size={30} />} title="Tekrarlayan ödeme yok" text="Netflix, Spotify, kira, faturalar… Ekle; sonraki tarihi ve aylık/yıllık toplamı görürsün." action={<button type="button" className="k-btn primary" onClick={() => setCreating(true)}><Plus size={18} /> Ödeme ekle</button>} />
+            <EmptyState art="repeat" {...empty(app.names).recurring} action={<button type="button" className="k-btn primary" onClick={() => setCreating(true)}><Plus size={18} /> Ödeme ekle</button>} />
           ) : (
             <div className="k-card-list k-gap">
               {rows.map(({ r, next, monthly }) => {
@@ -256,7 +257,7 @@ export default function RecurringPage({ tab = "abonelikler", id }) {
             </div>
           </div>
           {plans.length === 0 ? (
-            <EmptyState icon={<Layers size={30} />} title="Taksitli alışveriş yok" text="Harcama eklerken “Taksitli alışveriş”i aç; her ay otomatik dağılır, kalan taksitleri buradan izlersin." action={<button type="button" className="k-btn primary" onClick={() => app.openAdd({ initial: { installments: true } })}><Plus size={18} /> Taksitli ekle</button>} />
+            <EmptyState art="layers" {...empty(app.names).installments} action={<button type="button" className="k-btn primary" onClick={() => app.openAdd({ initial: { installments: true } })}><Plus size={18} /> Taksitli ekle</button>} />
           ) : (
             <div className="k-card-list k-gap">
               {plans.map(({ p, pr }) => (
@@ -276,6 +277,6 @@ export default function RecurringPage({ tab = "abonelikler", id }) {
   return (
     <SplitView master={master} hasDetail={!!id}
       detail={subs ? <RuleDetail id={id} onBack={() => app.goBack(base)} /> : <PlanDetail id={id} onBack={() => app.goBack(base)} />}
-      empty={<div className="k-page"><EmptyState icon={subs ? <Repeat size={30} /> : <Layers size={30} />} title="Bir kayıt seç" text="Ayrıntılar ve ödeme planı burada görünür." /></div>} />
+      empty={<div className="k-page"><EmptyState art={subs ? "repeat" : "layers"} title="Bir kayıt seç" text="Ayrıntılar ve ödeme planı burada görünür." /></div>} />
   );
 }

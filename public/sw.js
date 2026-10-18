@@ -1,9 +1,9 @@
-// Harcama Takibi service worker.
+// Sıla'nın Kumbarası service worker.
 // Uygulama çevrimdışı AÇILABİLSİN diye YALNIZCA şunlar önbelleğe alınır:
 //   • sayfa kabuğu (index.html): AĞ-ÖNCELİKLİ → çevrimiçiyken HER ZAMAN güncel; ağ yoksa önbellek.
 //   • /assets/* : Vite içerik-hash'li (adı içeriğiyle değişir) → bayat içeriğe kilitleme riski YOK.
 // Diğer tüm istekler doğrudan ağa gider.
-const CACHE = "kesem-v2";
+const CACHE = "kumbara-v3";
 const SHELL_KEY = "/__kesem_shell__";
 const MAX_ASSETS = 160;
 
@@ -11,7 +11,7 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) =>
   event.waitUntil(
     (async () => {
-      for (const k of await caches.keys()) if (k.startsWith("kesem-") && k !== CACHE) await caches.delete(k);
+      for (const k of await caches.keys()) if ((k.startsWith("kesem-") || k.startsWith("kumbara-")) && k !== CACHE) await caches.delete(k);
       await self.clients.claim();
     })()
   )

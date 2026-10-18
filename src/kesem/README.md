@@ -1,6 +1,6 @@
 # Kesem — Harcama Takibi (Parça 1/3)
 
-Bağımsız, telefon öncelikli harcama takibi uygulaması (PWA). Veriler yalnızca cihazdaki IndexedDB'de durur; sunucu ya da hesap gerekmez.
+Sıla'nın Kumbarası — modül notları. Kişisel metinler: `texts.js`, çizimler: `ui/art.jsx`.
 `/kesem/...` adresiyle de doğrudan açılır (PWA yenileme/derin bağlantı).
 
 ## Yapı

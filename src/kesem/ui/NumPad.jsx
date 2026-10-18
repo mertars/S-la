@@ -10,7 +10,7 @@ export default function NumPad({ onKey, onSubmit, canSubmit, submitLabel = "Kayd
       <div className="k-pad-keys">
         {KEYS.map((k) => (
           <button key={k} type="button" className="k-key" onClick={() => onKey(k)} aria-label={k === "back" ? "Sil" : k === "," ? "Virgül" : k}>
-            {k === "back" ? <Delete size={22} /> : k}
+            {k === "back" ? <Delete size={22} strokeWidth={1.75} /> : k}
           </button>
         ))}
       </div>

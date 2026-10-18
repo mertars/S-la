@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Amt } from "../ui/Amt";
-import { Plus, Trash2, Users, Check } from "lucide-react";
+import { Plus, Trash2, Check } from "lucide-react";
 import { Page, AmountSheet, AmountField, SplitView } from "../ui/parts";
 import Sheet from "../ui/Sheet";
 import { EmptyState, Segmented } from "../ui/common";
@@ -9,6 +9,7 @@ import { useKesem } from "../state/store";
 import { personBalances, remainingOf } from "../model/finance";
 import { formatMoney, formatMoneyText, rateOf, CURRENCIES, currencySymbol } from "../model/money";
 import { fromDateInput, shortDate, startOfDay, toDateInput, trLower } from "../model/dates";
+import { empty } from "../texts";
 
 function DebtEditor({ initial, onClose }) {
   const k = useKesem();
@@ -76,7 +77,7 @@ function PersonDetail({ id, onBack }) {
   const [edit, setEdit] = useState(null);
   const [part, setPart] = useState(null);
   const person = k.personById(id);
-  if (!person) return <Page title="Kişi" onBack={onBack}><EmptyState icon={<Users size={30} />} title="Kişi bulunamadı" /></Page>;
+  if (!person) return <Page title="Kişi" onBack={onBack}><EmptyState art="users" title="Kişi bulunamadı" /></Page>;
   const nl = netLine(bal?.net || 0);
   const today = startOfDay(Date.now());
   return (
@@ -142,7 +143,7 @@ export default function DebtsPage({ id }) {
         </div>
       </section>
       {withOpen.length === 0 ? (
-        <EmptyState icon={<Users size={30} />} title="Açık borç yok" text="Birine borç verdiysen ya da aldıysan ekle. Harcama eklerken “Bölüş” dersen burada otomatik görünür." />
+        <EmptyState art="people" {...empty(app.names).debts} />
       ) : (
         <>
           <div className="k-section-title">Kişiler</div>
@@ -163,5 +164,5 @@ export default function DebtsPage({ id }) {
       {edit && <DebtEditor initial={edit} onClose={(rec) => { setEdit(null); if (rec) go(rec.personId); }} />}
     </Page>
   );
-  return <SplitView master={master} hasDetail={!!id} detail={<PersonDetail id={id} onBack={() => app.goBack("daha-fazla/borclar")} />} empty={<div className="k-page"><EmptyState icon={<Users size={30} />} title="Bir kişi seç" text="Kayıtlarını, ödendi işaretlerini ve kısmi ödemeleri burada yönet." /></div>} />;
+  return <SplitView master={master} hasDetail={!!id} detail={<PersonDetail id={id} onBack={() => app.goBack("daha-fazla/borclar")} />} empty={<div className="k-page"><EmptyState art="users" title="Bir kişi seç" text="Kayıtlarını, ödendi işaretlerini ve kısmi ödemeleri burada yönet." /></div>} />;
 }

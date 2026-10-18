@@ -1,3 +1,4 @@
+import { APP_NAME_DEFAULT } from "../texts";
 // Uygulama kilidi yardımcıları (SAF + WebCrypto/WebAuthn). PIN ASLA düz metin saklanmaz:
 // PBKDF2-SHA256 (rastgele tuz, 150.000 tur) türevi saklanır. Biyometri yalnızca cihazın
 // WebAuthn platform doğrulayıcısı varsa (Face ID / Touch ID / parmak izi) sunulur.
@@ -54,8 +55,8 @@ export async function bioRegister(userKey) {
   const cred = await navigator.credentials.create({
     publicKey: {
       challenge: challenge(),
-      rp: { name: "Harcama Takibi" },
-      user: { id: enc.encode(String(userKey).slice(0, 60) || "misafir"), name: "kesem", displayName: "Harcama Takibi" },
+      rp: { name: APP_NAME_DEFAULT },
+      user: { id: enc.encode(String(userKey).slice(0, 60) || "misafir"), name: "kesem", displayName: APP_NAME_DEFAULT },
       pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
       authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "discouraged" },
       timeout: 60000,

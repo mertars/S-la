@@ -7,6 +7,7 @@ import { dueGenerated, splitEqual, installmentRows, upcomingItems, occurrenceKey
 import { dayKey } from "../model/dates";
 import { COLLECTIONS as BACKUP_COLLECTIONS } from "../model/backup";
 import { trLower } from "../model/dates";
+import { addedMessage, namesFrom } from "../texts";
 
 // Kesem durum yönetimi. Tüm veri bellekte tutulur (kişisel harcama hacmi için
 // yeterli) ve HER değişiklik bir "değişiklik kümesi"dir:
@@ -363,7 +364,7 @@ export function KesemProvider({ userId, children }) {
       if (!ok) return null;
       if (!silent) {
         notify({
-          message: `${tx.kind === "income" ? "Gelir eklendi" : tx.split ? "Bölüşülen harcama eklendi" : "Harcama eklendi"} · ${formatMoneyText(tx.kind === "income" ? tx.amountMinor : -tx.amountMinor, tx.currency)}`,
+          message: addedMessage(namesFrom(stateRef.current.settings), { kind: tx.kind, amountText: formatMoneyText(tx.amountMinor, tx.currency), split: !!tx.split, quick: !!input.templateId }),
           actionLabel: "Geri Al",
           action: "undo",
         });

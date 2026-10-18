@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Amt } from "../ui/Amt";
-import { Check, Plus, X, ShoppingBasket } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import { Page, AmountSheet, Bar } from "../ui/parts";
 import { EmptyState } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { formatMoney } from "../model/money";
+import { empty } from "../texts";
 
 export default function ShoppingPage({ onBack }) {
   const k = useKesem();
@@ -45,7 +46,7 @@ export default function ShoppingPage({ onBack }) {
         <button type="button" className="k-btn primary sm" onClick={add} disabled={!name.trim()}>Ekle</button>
       </label>
       {todo.length === 0 ? (
-        <EmptyState icon={<ShoppingBasket size={30} />} title="Listen temiz" text="Alacaklarını yaz; markette işaretle, sonra tek dokunuşla harcama olarak kaydet." />
+        <EmptyState art="cart" {...empty(app.names).shopping} />
       ) : (
         <div className="k-card-list k-gap">
           {todo.map((i) => (

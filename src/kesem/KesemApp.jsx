@@ -1,43 +1,119 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Home, MoreHorizontal, Plus, Receipt, ArrowLeft } from "lucide-react";
+import { MoreHorizontal, Plus, Receipt, Sun, PiggyBank } from "lucide-react";
 import "./kesem.css";
 import { KesemProvider, useKesem } from "./state/store";
 import { useIsTablet, useKesemRoute, useMediaQuery } from "./state/route";
 import { AppCtx } from "./ui/appctx";
 import AddSheet from "./ui/AddSheet";
 import { Toast, EmptyState } from "./ui/common";
+import { Jar } from "./ui/art";
 import HomePage from "./pages/Home";
 import ExpensesPage from "./pages/Expenses";
 import AnalysisPage from "./pages/Analysis";
 import MorePage from "./pages/More";
+import GoalsPage from "./pages/Goals";
 import LockScreen from "./ui/LockScreen";
 import Onboarding from "./ui/Onboarding";
-import { useMenuLabel } from "./config";
 import { emptyFilter } from "./model/filters";
+import { appName, empty, namesFrom, splashSign } from "./texts";
 
+// Alt gezinme: 4 sekme + ayrı yuvarlak "Ekle" düğmesi. "analiz", Harcamalar sekmesinin ikinci yüzü.
 const TABS = [
-  { key: "", label: "Ana Sayfa", icon: Home },
-  { key: "harcamalar", label: "Harcamalar", icon: Receipt },
-  { key: "analiz", label: "Analiz", icon: BarChart3 },
-  { key: "daha-fazla", label: "Daha Fazla", icon: MoreHorizontal },
+  { key: "", label: "Bugün", icon: Sun },
+  { key: "harcamalar", label: "Harcamalar", icon: Receipt, also: ["analiz"] },
+  { key: "kumbara", label: "Kumbara", icon: PiggyBank },
+  { key: "daha-fazla", label: "Daha fazla", icon: MoreHorizontal },
 ];
+const tabIndex = (seg) => Math.max(0, TABS.findIndex((t) => t.key === seg || t.also?.includes(seg)));
 
-function NavItem({ tab, active, onClick }) {
-  const I = tab.icon;
+function NavTabs({ active, onGo, vertical }) {
   return (
-    <button type="button" className={`k-nav-item ${active ? "on" : ""}`} onClick={onClick} aria-current={active ? "page" : undefined}>
-      <I size={22} strokeWidth={active ? 2.4 : 2} />
-      <span>{tab.label}</span>
-    </button>
+    <div className={`k-nav-tabs ${vertical ? "vertical" : ""}`} style={{ "--i": active }}>
+      <span className="k-nav-ind" aria-hidden="true" />
+      {TABS.map((t, i) => {
+        const I = t.icon;
+        const on = i === active;
+        return (
+          <button key={t.key} type="button" className={`k-nav-item ${on ? "on" : ""}`} onClick={() => onGo(t.key)} aria-current={on ? "page" : undefined}>
+            <I size={22} strokeWidth={on ? 2.1 : 1.75} aria-hidden="true" />
+            <span>{t.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Uygulama kökünü her zaman GÖRÜNEN alana (visualViewport) oturtur.
+ * Neden: iOS'ta klavye açılınca ya da bir alan odaklanınca sayfa (layout viewport) kayar;
+ * `position: fixed; inset: 0` olan eski kök onunla kayıyor, alt çubuk ekranın ortasına çıkıyordu.
+ * Artık kök = görünen alan; alt çubuk kökün son (sabit) satırı → hep en altta. Klavye açıkken gizlenir.
+ */
+function useAppViewport(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const vv = window.visualViewport;
+    let raf = 0;
+    const apply = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const h = vv ? vv.height : window.innerHeight;
+        const t = vv ? vv.offsetTop : 0;
+        el.style.setProperty("--k-vvh", `${Math.round(h)}px`);
+        el.style.setProperty("--k-vvt", `${Math.round(t)}px`);
+        const typing = !!document.activeElement?.matches?.("input:not([type=checkbox]):not([type=file]), textarea, select");
+        el.dataset.kKbd = vv && typing && window.innerHeight - vv.height > 120 ? "1" : "0";
+      });
+    };
+    // Klavye kapanınca iOS'un kaydırdığı belgeyi başa sar (alt çubuk boşlukta asılı kalmasın).
+    const onFocusOut = () =>
+      setTimeout(() => {
+        if (!document.activeElement?.matches?.("input, textarea, select")) {
+          if (window.scrollY || document.documentElement.scrollTop) window.scrollTo(0, 0);
+        }
+        apply();
+      }, 80);
+    apply();
+    vv?.addEventListener("resize", apply);
+    vv?.addEventListener("scroll", apply);
+    window.addEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    document.addEventListener("focusin", apply);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      cancelAnimationFrame(raf);
+      vv?.removeEventListener("resize", apply);
+      vv?.removeEventListener("scroll", apply);
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+      document.removeEventListener("focusin", apply);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, [ref]);
+}
+
+// Açılış (veriler yüklenirken) — index.html'deki statik açılışla aynı görünüm.
+function Splash({ names }) {
+  return (
+    <div className="k-splash" role="status" aria-label="Yükleniyor">
+      <Jar level={0.42} size={84} />
+      <b>{appName(names)}</b>
+      <small>{splashSign(names)}</small>
+    </div>
   );
 }
 
 function Shell({ onExit, userId }) {
   const k = useKesem();
+  const rootRef = useRef(null);
+  useAppViewport(rootRef);
   const theme = useMediaQuery("(prefers-color-scheme: dark)") ? "dark" : "light";
   const isTablet = useIsTablet();
   const { segs, navigate, goBack } = useKesemRoute();
-  const menuLabel = useMenuLabel();
+  const names = useMemo(() => namesFrom(k.settings), [k.settings]);
+  const title = appName(names);
   const [sheet, setSheet] = useState(null); // { mode, initial, editId }
   const [expFilter, setExpFilter] = useState(emptyFilter);
   const [unlocked, setUnlocked] = useState(false);
@@ -45,19 +121,28 @@ function Shell({ onExit, userId }) {
   const hiddenAt = useRef(0);
 
   const tab = segs[0] || "";
-  const openAdd = useCallback((o = {}) => setSheet({ mode: "tx", initial: o.initial || {}, editId: o.editId || null, key: Date.now() }), []);
+  const { dismissToast } = k;
+  const openAdd = useCallback(
+    (o = {}) => {
+      dismissToast(); // önceki şerit yeni ekleme ekranının üstünde kalmasın
+      setSheet({ mode: "tx", initial: o.initial || {}, editId: o.editId || null, key: Date.now() });
+    },
+    [dismissToast]
+  );
   const openTemplate = useCallback((o = {}) => setSheet({ mode: "template", initial: o.initial || {}, editId: null, key: Date.now() }), []);
   const closeSheet = useCallback(() => setSheet(null), []);
 
   const scheme = k.settings.mode === "auto" ? theme : k.settings.mode;
 
-  // Sekme değişince açık ekleme sayfasını kapat (geçmiş girişi sayfa kapanırken geri alınır).
-  const go = useCallback((path, opts) => navigate(path, opts), [navigate]);
-
   const app = useMemo(
-    () => ({ openAdd, openTemplate, navigate: go, goBack, isTablet, exit: onExit, menuLabel, expFilter, setExpFilter, userKey: userId, markUnlocked: () => setUnlocked(true) }),
-    [openAdd, openTemplate, go, goBack, isTablet, onExit, menuLabel, expFilter, userId]
+    () => ({ openAdd, openTemplate, navigate, goBack, isTablet, exit: onExit, names, appName: title, expFilter, setExpFilter, userKey: userId, markUnlocked: () => setUnlocked(true) }),
+    [openAdd, openTemplate, navigate, goBack, isTablet, onExit, names, title, expFilter, userId]
   );
+
+  // Eski adresler (birikimler artık kendi sekmesinde)
+  useEffect(() => {
+    if (segs[0] === "daha-fazla" && segs[1] === "birikimler") navigate(`kumbara${segs[2] ? "/" + segs[2] : ""}`, { replace: true });
+  }, [segs, navigate]);
 
   // ---- Kilit: açılışta ve arka plandan dönünce PIN; uygulama değiştiricide içerik örtülür ----
   const lockOn = k.ready && !!k.lock.enabled && !!k.lock.hash;
@@ -78,26 +163,31 @@ function Shell({ onExit, userId }) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [k.ready, lockOn, autoLock, k.settings.privacy]);
 
-  // Sekme/uygulama başlığı kullanıcının seçtiği ada uysun.
+  // Başlık + adlar (index.html'deki statik açılış ekranı bir sonraki açılışta doğru adları yazsın)
   useEffect(() => {
-    document.title = menuLabel;
-  }, [menuLabel]);
+    document.title = title;
+    if (!k.ready) return;
+    try {
+      localStorage.setItem("kesem_names", JSON.stringify({ sila: names.sila, mert: names.mert }));
+    } catch {
+      /* depolama yok — açılış varsayılan adları gösterir */
+    }
+  }, [title, names, k.ready]);
 
-  // iOS/Android durum çubuğu rengi modülün kendi zeminine uysun; çıkışta eski hâli.
+  // Durum çubuğu rengi uygulamanın zeminine uysun
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
-    const prev = meta?.getAttribute("content");
     meta?.setAttribute("content", scheme === "dark" ? "#0c0a0d" : "#f6f2f4");
-    return () => prev && meta?.setAttribute("content", prev);
+    document.documentElement.style.colorScheme = scheme;
+    document.documentElement.style.background = scheme === "dark" ? "#0c0a0d" : "#f6f2f4";
   }, [scheme]);
 
-  // Sayfa değişince başlığa odak/kaydırma sıfırlansın
+  // Sayfa değişince başa kaydır
   useEffect(() => {
     document.querySelector(".k-main")?.scrollTo?.(0, 0);
-  }, [tab]);
+  }, [tab, segs[1]]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Açılışta (ve gün değişince / uygulamaya dönünce): vadesi gelen taksit & otomatik abonelikleri gerçek kayda çevir;
-  // bugünü "kayıt tuttuğun gün" olarak işaretle (harcamasız gün serisi).
+  // Açılışta (ve uygulamaya dönünce): vadesi gelen taksit & abonelikleri kayda çevir; bugünü "uğradığın gün" say.
   const { ready, materialize, touchActivity } = k;
   useEffect(() => {
     if (!ready) return;
@@ -113,53 +203,48 @@ function Shell({ onExit, userId }) {
 
   const showOnb = k.ready && !locked && k.settings.onboarded !== true && (k.settings.onbForce || (k.transactions.length === 0 && !(k.budget.monthlyMinor > 0)));
   let page;
-  if (!k.ready && !k.failed) page = <div className="k-boot" role="status" aria-label="Yükleniyor"><span className="k-spinner" /></div>;
-  else if (k.failed) page = <div className="k-page"><EmptyState icon={<ArrowLeft size={30} />} title="Veriler açılamadı" text="Depolama erişilemiyor. Sayfayı yenile ya da tarayıcı ayarlarını kontrol et." /></div>;
+  if (!k.ready && !k.failed) page = <Splash names={names} />;
+  else if (k.failed) page = <div className="k-page"><EmptyState art="jar" {...empty(names).failed} /></div>;
   else if (tab === "harcamalar") page = <ExpensesPage selectedId={segs[1] || null} />;
   else if (tab === "analiz") page = <AnalysisPage />;
+  else if (tab === "kumbara") page = <GoalsPage id={segs[1] || null} />;
   else if (tab === "daha-fazla") page = <MorePage section={segs[1] || null} id={segs[2] || null} />;
   else page = <HomePage />;
 
-  const activeTab = TABS.some((t) => t.key === tab) ? tab : "";
+  const active = tabIndex(tab);
+  const go = (key) => (key === tab && !segs[1] ? document.querySelector(".k-main")?.scrollTo?.({ top: 0, behavior: "smooth" }) : navigate(key));
 
   return (
     <AppCtx.Provider value={app}>
-      <div className="kesem-root" data-k-scheme={scheme} data-k-palette={k.settings.palette} data-k-tablet={isTablet ? "1" : "0"} data-k-privacy={k.settings.privacy ? "1" : "0"}>
+      <div ref={rootRef} className="kesem-root" data-k-scheme={scheme} data-k-palette={k.settings.palette} data-k-tablet={isTablet ? "1" : "0"} data-k-privacy={k.settings.privacy ? "1" : "0"}>
         <div className="k-bg" aria-hidden="true" />
         {locked && <LockScreen onUnlock={() => setUnlocked(true)} />}
-        {isTablet && (
-          <nav className="k-side" aria-label="Harcama takibi gezinmesi">
-            <div className="k-side-brand">{menuLabel}</div>
+        {isTablet && k.ready && (
+          <nav className="k-side" aria-label="Gezinme">
+            <div className="k-side-brand">
+              <Jar level={0.5} size={30} coins={false} />
+              <span>{title}</span>
+            </div>
             <button type="button" className="k-side-add" onClick={() => openAdd()} disabled={!k.ready}>
-              <Plus size={20} strokeWidth={2.6} /> Ekle
+              <Plus size={20} strokeWidth={2.4} /> <span>Ekle</span>
             </button>
-            {TABS.map((t) => (
-              <NavItem key={t.key} tab={t} active={activeTab === t.key} onClick={() => navigate(t.key)} />
-            ))}
+            <NavTabs active={active} onGo={go} vertical />
           </nav>
         )}
         <main className="k-main" id="k-main">
-          {k.ready && !k.persistent && <div className="k-banner" role="alert">Kalıcı depolama kullanılamıyor — kayıtlar bu oturum kapanınca silinir.</div>}
+          {k.ready && !k.persistent && <div className="k-banner" role="alert">Kalıcı depolama kullanılamıyor; kayıtlar bu oturum kapanınca silinir.</div>}
           {locked ? null : page}
         </main>
-        {!isTablet && (
-          <nav className="k-tabbar" aria-label="Harcama takibi gezinmesi">
-            <NavItem tab={TABS[0]} active={activeTab === ""} onClick={() => navigate("")} />
-            <NavItem tab={TABS[1]} active={activeTab === "harcamalar"} onClick={() => navigate("harcamalar")} />
-            <button type="button" className="k-fab" onClick={() => openAdd()} disabled={!k.ready} aria-label="Harcama veya gelir ekle">
-              <Plus size={30} strokeWidth={2.6} />
+        {!isTablet && k.ready && (
+          <nav className="k-nav" aria-label="Gezinme">
+            <NavTabs active={active} onGo={go} />
+            <button type="button" className="k-nav-add" onClick={() => openAdd()} disabled={!k.ready} aria-label="Harcama ya da gelir ekle">
+              <Plus size={28} strokeWidth={2.2} />
             </button>
-            <NavItem tab={TABS[2]} active={activeTab === "analiz"} onClick={() => navigate("analiz")} />
-            <NavItem tab={TABS[3]} active={activeTab === "daha-fazla"} onClick={() => navigate("daha-fazla")} />
           </nav>
         )}
-        {isTablet && (
-          <button type="button" className="k-fab floating" onClick={() => openAdd()} disabled={!k.ready} aria-label="Harcama veya gelir ekle">
-            <Plus size={30} strokeWidth={2.6} />
-          </button>
-        )}
         {showOnb && <Onboarding />}
-        {covered && <div className="k-cover" aria-hidden="true" />}
+        {covered && <div className="k-cover" aria-hidden="true"><Jar level={0.42} size={70} coins={false} /></div>}
         {!locked && sheet && <AddSheet key={sheet.key} mode={sheet.mode} initial={sheet.initial} editId={sheet.editId} onClose={closeSheet} />}
         <Toast />
       </div>
@@ -167,7 +252,6 @@ function Shell({ onExit, userId }) {
   );
 }
 
-// Dışarıdan kullanılan giriş: tam ekran modül.
 export default function KesemApp({ userId, onExit }) {
   return (
     <KesemProvider userId={userId}>

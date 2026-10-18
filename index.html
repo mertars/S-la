@@ -2,24 +2,60 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#0c0a0d" />
+    <!-- maximum-scale=1: odaklanınca otomatik yakınlaştırma yok (ayrıca tüm alanlar ≥16 px); viewport-fit=cover: iPhone güvenli alanları -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual" />
+    <meta name="theme-color" content="#f6f2f4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c0a0d" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Harcama" />
-    <meta name="description" content="Günlük harcamalarını, bütçeni ve birikimlerini takip et." />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Sıla Kumbara" />
+    <meta name="application-name" content="Sıla'nın Kumbarası" />
+    <meta name="description" content="Sıla'nın harcama ve birikim kumbarası." />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
-    <title>Harcama Takibi</title>
+    <title>Sıla'nın Kumbarası</title>
     <style>
-      html, body, #root { margin: 0; height: 100%; background: #0c0a0d; }
-      @media (prefers-color-scheme: light) { html, body, #root { background: #f6f2f4; } }
+      /* Belge hiç kaymasın: uygulama kendi alanında kayar (iOS'ta alt çubuğun yukarı kaymasını önler). */
+      html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #f6f2f4; -webkit-text-size-adjust: 100%; }
+      #root { height: 100%; }
+      .boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-family: ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1d1a1f; text-align: center; }
+      .boot b { font-size: 22px; letter-spacing: -0.01em; margin-top: 6px; }
+      .boot small { font: italic 13.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #6b6470; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background: #0c0a0d; }
+        .boot { color: #f6f2f5; }
+        .boot small { color: #b7b0bc; }
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Statik açılış: JS yüklenirken görünür, React yerine kendi açılışını çizer. Adlar son kullanılan ayarlardan okunur. -->
+      <div class="boot" role="status" aria-label="Yükleniyor">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="84" height="84" style="border-radius:20px" aria-hidden="true"> <defs> <linearGradient id="bootbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbeef3"/><stop offset="1" stop-color="#f3d9e3"/></linearGradient> <clipPath id="bootjar"><path d="M196 150 C196 168 140 172 140 218 L140 384 C140 412 160 428 188 428 L324 428 C352 428 372 412 372 384 L372 218 C372 172 316 168 316 150 Z"/></clipPath> </defs> <rect width="512" height="512" rx="0" fill="url(#bootbg)"/> <g clip-path="url(#bootjar)"> <path d="M100 286 C150 270 196 270 246 286 C296 302 342 302 412 286 L412 460 L100 460 Z" fill="#e7a3b8"/> <path d="M100 286 C150 270 196 270 246 286 C296 302 342 302 412 286" fill="none" stroke="#c0506f" stroke-width="8" stroke-linecap="round"/> <g fill="#f4c26b" stroke="#b9822a" stroke-width="5"> <ellipse cx="200" cy="404" rx="30" ry="11"/><ellipse cx="270" cy="404" rx="30" ry="11"/><ellipse cx="236" cy="384" rx="30" ry="11"/><ellipse cx="306" cy="384" rx="30" ry="11"/> </g> </g> <path d="M196 120 L196 150 C196 168 140 172 140 218 L140 384 C140 412 160 428 188 428 L324 428 C352 428 372 412 372 384 L372 218 C372 172 316 168 316 150 L316 120" fill="none" stroke="#8c1d3f" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/> <path d="M170 236 L170 352" stroke="#ffffff" stroke-opacity="0.75" stroke-width="12" stroke-linecap="round"/> <rect x="182" y="82" width="148" height="44" rx="14" fill="#c0506f" stroke="#8c1d3f" stroke-width="10"/> <path d="M256 236 C256 212 222 206 222 232 C222 252 256 268 256 268 C256 268 290 252 290 232 C290 206 256 212 256 236 Z" fill="#8c1d3f"/> </svg>
+        <b id="boot-name">Sıla'nın Kumbarası</b>
+        <small id="boot-sign">Mert'ten Sıla'ya sevgiyle</small>
+      </div>
+    </div>
+    <script>
+      (function () {
+        try {
+          var n = JSON.parse(localStorage.getItem("kesem_names") || "null");
+          if (!n || !n.sila || !n.mert) return;
+          var V = "aeıioöuüAEIİOÖUÜ", lv = function (w) { for (var i = w.length - 1; i >= 0; i--) if (V.indexOf(w[i]) >= 0) return w[i].toLocaleLowerCase("tr"); return "e"; };
+          var ev = function (w) { return V.indexOf(w[w.length - 1]) >= 0; };
+          var h4 = { a: "ı", ı: "ı", e: "i", i: "i", o: "u", u: "u", ö: "ü", ü: "ü" }, h2 = { a: "a", ı: "a", o: "a", u: "a", e: "e", i: "e", ö: "e", ü: "e" };
+          var gen = function (w) { return w + "'" + (ev(w) ? "n" : "") + h4[lv(w)] + "n"; };
+          var dat = function (w) { return w + "'" + (ev(w) ? "y" : "") + h2[lv(w)]; };
+          var abl = function (w) { return w + "'" + (/[çfhkpsşt]$/i.test(w) ? "t" : "d") + h2[lv(w)] + "n"; };
+          document.getElementById("boot-name").textContent = gen(n.sila) + " Kumbarası";
+          document.getElementById("boot-sign").textContent = abl(n.mert) + " " + dat(n.sila) + " sevgiyle";
+          document.title = gen(n.sila) + " Kumbarası";
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

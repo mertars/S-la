@@ -1,10 +1,14 @@
 import { useEffect, useRef } from "react";
 import { Undo2, Redo2 } from "lucide-react";
 import { useKesem } from "../state/store";
+import { Spot } from "./art";
 
-export function Segmented({ value, onChange, options, label }) {
+// Kayan seçili zeminli bölümlü düğme (seçim değişince zemin yumuşakça kayar).
+export function Segmented({ value, onChange, options, label, small = false }) {
+  const i = Math.max(0, options.findIndex((o) => o.value === value));
   return (
-    <div className="k-seg" role="tablist" aria-label={label}>
+    <div className={`k-seg ${small ? "sm" : ""}`} role="tablist" aria-label={label} style={{ "--n": options.length, "--i": i }}>
+      <span className="k-seg-ind" aria-hidden="true" />
       {options.map((o) => (
         <button key={o.value} type="button" role="tab" aria-selected={value === o.value} className={value === o.value ? "on" : ""} onClick={() => onChange(o.value)}>
           {o.label}
@@ -14,10 +18,11 @@ export function Segmented({ value, onChange, options, label }) {
   );
 }
 
-export function EmptyState({ icon, title, text, action }) {
+// Boş ekran: küçük sade çizim + kısa metin (metinler texts.js'te).
+export function EmptyState({ art = "receipt", title, text, action, compact = false }) {
   return (
-    <div className="k-empty">
-      <div className="k-empty-art">{icon}</div>
+    <div className={`k-empty ${compact ? "compact" : ""}`}>
+      <div className="k-empty-art"><Spot name={art} size={compact ? 96 : 120} /></div>
       <h3>{title}</h3>
       {text && <p>{text}</p>}
       {action}

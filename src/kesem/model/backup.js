@@ -134,7 +134,7 @@ export function validateBackup(text, sizeBytes) {
   let j;
   try { j = JSON.parse(text.replace(/^\uFEFF/, "")); } catch { return fail("Dosya geçerli bir JSON değil; bozuk ya da yanlış dosya olabilir."); }
   if (!j || typeof j !== "object" || Array.isArray(j)) return fail("Dosya biçimi tanınmadı.");
-  if (j.app !== BACKUP_APP) return fail("Bu dosya Harcama Takibi yedeği değil.");
+  if (j.app !== BACKUP_APP) return fail("Bu dosya bir kumbara yedeği değil.");
   if (!Number.isInteger(j.version) || j.version < 1) return fail("Yedek sürümü okunamadı.");
   if (j.version > BACKUP_VERSION) return fail("Bu yedek daha yeni bir sürümle alınmış; uygulamayı güncelleyip tekrar dene.");
   if (!j.data || typeof j.data !== "object") return fail("Yedekte veri bölümü yok.");

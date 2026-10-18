@@ -5,6 +5,7 @@ import { displayInput, formatMoney, minorToInput, parseAmountInput, pressKey, cu
 import { useApp } from "./appctx";
 import PageHeader from "./PageHeader";
 import { Amt } from "./Amt";
+import { Segmented } from "./common";
 
 // Halka ilerleme göstergesi. state: ok | near | over (yalnızca DURUM renkleri) | boş = marka vurgusu.
 export function Ring({ value = 0, size = 64, stroke = 7, state, label, children }) {
@@ -84,10 +85,10 @@ export function SplitView({ master, detail, hasDetail, empty }) {
 }
 
 // Sayfa kabuğu: başlık + içerik + alt boşluk (alt çubuk altında kalmasın).
-export function Page({ title, subtitle, onBack, right, children }) {
+export function Page({ title, subtitle, onBack, right, below, children }) {
   return (
     <div className="k-page">
-      <PageHeader title={title} subtitle={subtitle} onBack={onBack} right={right} />
+      <PageHeader title={title} subtitle={subtitle} onBack={onBack} right={right} below={below} />
       {children}
       <div className="k-page-end" />
     </div>
@@ -102,5 +103,15 @@ export function HeroStat({ cap, value, sub }) {
       <div className="k-num xl" style={typeof value === "string" ? { fontSize: "clamp(26px, 8vw, 34px)" } : undefined}>{value}</div>
       {sub && <div className="k-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{sub}</div>}
     </section>
+  );
+}
+
+// Harcamalar sekmesinin iki yüzü: liste ↔ analiz (aynı sekmede, tek dokunuş).
+export function ListAnalysisSwitch({ value }) {
+  const app = useApp();
+  return (
+    <div className="k-head-switch">
+      <Segmented value={value} onChange={(v) => v !== value && app.navigate(v === "liste" ? "harcamalar" : "analiz", { replace: true })} options={[{ value: "liste", label: "Liste" }, { value: "analiz", label: "Analiz" }]} label="Görünüm" />
+    </div>
   );
 }
