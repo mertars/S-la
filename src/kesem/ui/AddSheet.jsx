@@ -4,32 +4,44 @@ import { CalendarDays, Camera, ChevronRight, Clock, CreditCard, Hash, Layers, Pl
 import Sheet from "./Sheet";
 import NumPad from "./NumPad";
 import DateTimePicker from "./DateTimePicker";
-import { Segmented } from "./common";
+import { ConfirmSheetBody, Segmented } from "./common";
 import { CategoryEditor, AccountEditor } from "./editors";
-import { Icon } from "./icons";
+import { Bubble, Icon } from "./icons";
 import { downscaleImage } from "./receipt";
 import { useKesem } from "../state/store";
 import { displayInput, formatMoney, minorToInput, parseAmountInput, pressKey, rateOf, formatRate, CURRENCIES, currencySymbol } from "../model/money";
 import { installmentAmounts, splitEqual } from "../model/finance";
 import { AmountField } from "./parts";
 import { addDays, dateTimeLabel, daysBetween, formatTime, fromDateInput, shortDate, toDateInput, trLower } from "../model/dates";
-import { ADD_HINT_EMPTY, ADD_HINT_PICKED, ADD_HINT_READY } from "../texts";
+import { ADD_HINT_EMPTY, ADD_HINT_PICKED, ADD_HINT_READY, CONFIRM_ADD_YES, CONFIRM_NO, confirmAdd, confirmDeleteTx } from "../texts";
+import { useApp } from "./appctx";
 
 const KINDS = [
   { value: "expense", label: "Harcama" },
   { value: "income", label: "Gelir" },
 ];
-const TOP_N = 8;
+const TOP_N = 6; // ekranda doğrudan görünen sık kullanılanlar; gerisi "Tümü" penceresinde
 const isOther = (c) => c.id === "cat-diger" || c.id === "cat-diger-gelir";
 
+// Renkli kategori kutusu (sık kullanılanlar ve "Tümü" penceresi).
+function CatTile({ c, on, flash, disabled, onPick }) {
+  return (
+    <button type="button" role="option" aria-selected={on} className={`k-qa-cat ${on ? "on" : ""} ${flash ? "flash" : ""}`} style={{ "--c": `var(--kc-${c.color})` }} onClick={() => onPick(c.id)} disabled={disabled}>
+      <Bubble icon={c.icon} color={c.color} size={50} />
+      <span>{c.name}</span>
+    </button>
+  );
+}
+
 // Hızlı ekleme — uygulamanın en sık kullanılan ekranı.
-//   Akış: tutarı yaz → kategoriye dokun → kaydedildi (2 adım).
-//   Kategori önce seçilirse: tutarı yaz → "Ekle".
+//   Akış: tutarı yaz → kategoriye dokun → Sıla'ya kısa onay ("Evet, ekle") → kaydedildi.
+//   Kategori önce seçilirse: tutarı yaz → "Ekle" → onay.
 //   Saat, ödeme yöntemi, yer, not, etiket, fotoğraf, taksit, bölüşme, döviz: varsayılanla gelir, "Ayrıntılar"da gizli.
 //   mode "tx"       : yeni kayıt (initial = ön doldurma) ya da düzenleme (editId)
 //   mode "template" : kısayol oluştur/düzenle (tutar isteğe bağlı)
 export default function AddSheet({ mode = "tx", initial = {}, editId = null, onClose }) {
   const k = useKesem();
+  const app = useApp();
   const { settings, transactions, accounts, tags } = k;
   const isTpl = mode === "template";
   const editingTx = editId ? k.txById(editId) : null;
@@ -70,7 +82,8 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
   const [paidBy, setPaidBy] = useState("me");
   const [photoErr, setPhotoErr] = useState("");
   const [flash, setFlash] = useState(null); // dokunulan kategori (kısa vurgulama)
-  const [allCats, setAllCats] = useState(false); // en çok kullanılan 8 kategori görünür; "Tümü" hepsini açar
+  const [picker, setPicker] = useState(false); // "Tümü": bütün kategoriler penceresi
+  const [confirm, setConfirm] = useState(null); // { categoryId, text } → Sıla'ya onay sorusu
   const touchedCat = useRef(!!initial.categoryId);
 
   // Mevcut fiş önizlemesi
@@ -109,12 +122,12 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
     return list.sort((a, b) => isOther(a) - isOther(b) || (usage.get(b.id) || 0) - (usage.get(a.id) || 0) || a.order - b.order);
   }, [k, kind, usage, categoryId]);
 
-  const shownCats = useMemo(() => {
-    if (allCats || cats.length <= TOP_N) return cats;
-    const top = cats.slice(0, TOP_N);
+  // Sık kullanılanlar: en çok kullanılan 6 kategori (seçilen kategori listede yoksa sona girer)
+  const favCats = useMemo(() => {
+    const top = cats.filter((c) => !isOther(c)).slice(0, TOP_N);
     const sel = categoryId && cats.find((c) => c.id === categoryId);
     return sel && !top.includes(sel) ? [...top.slice(0, TOP_N - 1), sel] : top;
-  }, [cats, allCats, categoryId]);
+  }, [cats, categoryId]);
 
   const amountMinor = parseAmountInput(amount);
   const subs = categoryId ? k.subCategories(categoryId) : [];
@@ -303,15 +316,28 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
     }
   };
 
+  // Kategoriye dokununca (tutar yazılıysa) Sıla'ya kısa bir onay sorusu; "Evet" ile eklenir.
+  // Cümle soru açılırken bir kez seçilir (her çizimde değişmesin).
+  const askConfirm = (id) => {
+    const day = dayOff === 0 ? "" : dayOff === 1 ? "dün" : dayOff === 2 ? "önceki gün" : shortDate(when);
+    const text = confirmAdd(app.names, { catName: k.catById(id)?.name || "", kind, dayText: day });
+    setConfirm({ categoryId: id, text });
+  };
   const tapCategory = (id) => {
     touchedCat.current = true;
     if (id !== categoryId) setSubId(null);
     setCategoryId(id);
     if (instant && amountMinor > 0 && extrasOk) {
       setFlash(id);
-      save({ categoryId: id });
+      askConfirm(id);
     }
   };
+  const submit = () => {
+    if (!valid || busy) return;
+    if (instant) askConfirm(categoryId);
+    else save();
+  };
+  const confirmCat = confirm ? k.catById(confirm.categoryId) : null;
 
   const makeShortcut = async () => {
     if (amountMinor <= 0 || !categoryId) return;
@@ -323,7 +349,9 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
     if (rec) k.notify({ message: `“${rec.name}” kısayolu eklendi`, actionLabel: "Geri al", action: "undo" });
   };
 
+  const [askDel, setAskDel] = useState(false);
   const remove = async () => {
+    setAskDel(false);
     setDetails(false);
     onClose();
     await k.deleteTransaction(editId);
@@ -356,7 +384,7 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
         size="lg"
         className="k-qa-sheet"
         bodyClass="k-qa-body"
-        footer={<NumPad onKey={onKey} onSubmit={() => save()} canSubmit={valid && !busy} submitLabel={submitLabel} />}
+        footer={<NumPad onKey={onKey} onSubmit={submit} canSubmit={valid && !busy} submitLabel={submitLabel} />}
       >
         <div className="k-qa" data-kind={kind}>
           {isTpl && (
@@ -401,38 +429,54 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
           )}
           <p className="k-qa-hint" aria-live="polite">{hint}</p>
           <div className="k-qa-cats-head">
-            <span>Kategori</span>
-            {cats.length > TOP_N && (
-              <button type="button" className="k-qa-more-btn" onClick={() => setAllCats((v) => !v)} aria-expanded={allCats}>
-                {allCats ? "Daha az" : `Tümü (${cats.length})`}
-              </button>
-            )}
+            <span>Sık kullanılanlar</span>
+            <button type="button" className="k-qa-more-btn" onClick={() => setPicker(true)}>
+              Tümü ({cats.length}) <ChevronRight size={15} aria-hidden="true" />
+            </button>
           </div>
-          <div className={`k-qa-grid ${allCats ? "all" : ""}`} role="listbox" aria-label="Kategori">
-            {shownCats.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                role="option"
-                aria-selected={categoryId === c.id}
-                className={`k-qa-cat ${categoryId === c.id ? "on" : ""} ${flash === c.id ? "flash" : ""}`}
-                style={{ "--c": `var(--kc-${c.color})` }}
-                onClick={() => tapCategory(c.id)}
-                disabled={busy}
-              >
-                <Icon name={c.icon} size={17} strokeWidth={1.8} />
-                <span>{c.name}</span>
-              </button>
+          <div className="k-qa-grid" role="listbox" aria-label="Sık kullanılan kategoriler">
+            {favCats.map((c) => (
+              <CatTile key={c.id} c={c} on={categoryId === c.id} flash={flash === c.id} disabled={busy} onPick={tapCategory} />
             ))}
-            {(allCats || cats.length <= TOP_N) && (
-              <button type="button" className="k-qa-cat add" onClick={() => setCatEditor({ kind })}>
-                <Plus size={17} strokeWidth={1.8} />
-                <span>Yeni</span>
-              </button>
-            )}
           </div>
         </div>
       </Sheet>
+
+      {picker && (
+        <Sheet open onClose={() => setPicker(false)} title="Tüm kategoriler" size="md">
+          <div className="k-cat-all" role="listbox" aria-label="Tüm kategoriler">
+            {cats.map((c) => (
+              <CatTile key={c.id} c={c} on={categoryId === c.id} disabled={busy} onPick={(id) => { setPicker(false); tapCategory(id); }} />
+            ))}
+            <button type="button" className="k-qa-cat add" onClick={() => { setPicker(false); setCatEditor({ kind }); }}>
+              <span className="k-qa-plus"><Plus size={22} strokeWidth={1.75} /></span>
+              <span>Yeni</span>
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {confirm && confirmCat && (
+        <Sheet open onClose={() => setConfirm(null)} title="Onay" head={<span className="k-sr">Onay</span>} size="sm">
+          <div className="k-ask" data-kind={kind}>
+            <div className="k-ask-art" style={{ "--c": `var(--kc-${confirmCat.color})` }}>
+              <Bubble icon={confirmCat.icon} color={confirmCat.color} size={60} />
+            </div>
+            <div className="k-ask-amt"><Amt>{formatMoney(amountMinor, currency)}</Amt></div>
+            <p className="k-ask-text">{confirm.text}</p>
+            <div className="k-ask-actions">
+              <button type="button" className="k-btn tonal" onClick={() => setConfirm(null)}>{CONFIRM_NO}</button>
+              <button type="button" className="k-btn primary" disabled={busy} onClick={() => save({ categoryId: confirm.categoryId })}>{CONFIRM_ADD_YES}</button>
+            </div>
+          </div>
+        </Sheet>
+      )}
+
+      {askDel && (
+        <Sheet open onClose={() => setAskDel(false)} title={confirmDeleteTx(app.names).title} size="sm">
+          <ConfirmSheetBody text={confirmDeleteTx(app.names).text} confirmLabel="Evet, sil" onCancel={() => setAskDel(false)} onConfirm={remove} />
+        </Sheet>
+      )}
 
       {details && (
         <Sheet open onClose={() => setDetails(false)} title="Ayrıntılar" size="md" footer={<div className="k-footbar"><button type="button" className="k-btn primary full" onClick={() => setDetails(false)}>Tamam</button></div>}>
@@ -647,7 +691,7 @@ export default function AddSheet({ mode = "tx", initial = {}, editId = null, onC
 
             <div className="k-add-links">
               {!isTpl && amountMinor > 0 && categoryId && <button type="button" className="k-link" onClick={makeShortcut}><Zap size={15} /> Bunu kısayol yap</button>}
-              {editId && <button type="button" className="k-link danger" onClick={remove}><Trash2 size={15} /> Kaydı sil</button>}
+              {editId && <button type="button" className="k-link danger" onClick={() => setAskDel(true)}><Trash2 size={15} /> Kaydı sil</button>}
             </div>
           </div>
         </Sheet>

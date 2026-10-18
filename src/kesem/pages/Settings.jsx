@@ -10,7 +10,7 @@ import { bioAvailable, bioRegister } from "../state/lock";
 import { BACKUP_VERSION, COLLECTION_LABEL, buildBackup, buildCsv, planImport, validateBackup, COLLECTIONS } from "../model/backup";
 import { blobToDataUrl, dataUrlToBlob, downloadBlob } from "../ui/download";
 import { dateTimeLabel, trLower } from "../model/dates";
-import { backupDone, DEFAULT_NAMES } from "../texts";
+import { backupDone, confirmWipe, DEFAULT_NAMES } from "../texts";
 
 const AUTO = [{ value: "0", label: "Hemen" }, { value: "60", label: "1 dk" }, { value: "300", label: "5 dk" }];
 const stamp = () => new Date().toISOString().slice(0, 10);
@@ -233,12 +233,13 @@ export default function SettingsSection() {
 }
 
 function WipeSheet({ onClose, onWipe }) {
+  const app = useApp();
   const [t, setT] = useState("");
   const ok = trLower(t.trim()) === "sil";
   return (
-    <Sheet open onClose={onClose} title="Tüm veriler silinsin mi?" size="sm">
+    <Sheet open onClose={onClose} title={`Her şey silinsin mi ${app.names.sila}?`} size="sm">
       <div className="k-confirm">
-        <p>Harcamaların, kategorilerin, bütçen, kumbaraların ve kilit dahil kumbaradaki verilerin TAMAMI bu cihazdan silinir. Bu işlem geri alınamaz. Önce yedek almanı öneririz.</p>
+        <p>{confirmWipe(app.names)}</p>
         <p className="k-hint" style={{ margin: "10px 0 6px" }}>Onaylamak için <b>SİL</b> yaz:</p>
         <input className="k-input" value={t} onChange={(e) => setT(e.target.value)} aria-label="Onay metni" autoCapitalize="characters" />
         <div className="k-confirm-actions"><button type="button" className="k-btn tonal" onClick={onClose}>Vazgeç</button><button type="button" className="k-btn danger" disabled={!ok} onClick={onWipe}>Hepsini sil</button></div>

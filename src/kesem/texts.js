@@ -229,3 +229,31 @@ export const specialDayNote = (n) => ({ title: `${n.mertAbl} bir not`, text: `Bu
 export const ADD_HINT_EMPTY = "Tutarı yaz, kategoriye dokun.";
 export const ADD_HINT_READY = "Şimdi kategoriye dokun, eklensin.";
 export const ADD_HINT_PICKED = "Hazır. Ekle'ye bas ya da kategoriyi değiştir.";
+
+// =====================================================================
+// Onay soruları (ekleme, silme…) — her biri Sıla'ya hitap eder
+// =====================================================================
+// Ekleme onayı — tutar zaten üstte büyük yazıyor; cümle yalnızca kategori (+ gün) söyler.
+export function confirmAdd(n, { catName, kind, dayText }) {
+  const when = dayText ? ` (${dayText})` : "";
+  if (kind === "income") {
+    return pick("ca-in", [
+      `Kumbaraya para giriyor ${n.sila}! ${catName}${when} olarak ekleyeyim mi?`,
+      `Ne güzel haber ${n.sila}. ${catName}${when} gelirini yazalım mı?`,
+      `${n.sila}, bunu ${catName}${when} olarak kumbaraya koyalım mı?`,
+    ]);
+  }
+  return pick("ca-out", [
+    `${catName}${when} için yazalım mı ${n.sila}?`,
+    `${n.sila}, bunu ${catName}${when} olarak deftere işleyeyim mi?`,
+    `Tamam mıyız ${n.sila}? ${catName}${when} kumbaraya not ediliyor.`,
+    `Bunu ${catName}${when} olarak kaydedeyim mi ${n.sila}?`,
+    `${catName}${when}, doğru mu ${n.sila}?`,
+  ]);
+}
+export const CONFIRM_ADD_YES = "Evet, ekle";
+export const CONFIRM_NO = "Vazgeç";
+export const confirmDeleteTx = (n) => ({ title: `Bu kaydı silelim mi ${n.sila}?`, text: "Silinenler'e gider; istersen sonra geri getirirsin." });
+export const confirmDeleteGoal = (n, name) => ({ title: `“${name}” kumbarası silinsin mi ${n.sila}?`, text: "İçindeki hareketler de gider. Hemen ardından Geri al ile döndürebilirsin." });
+export const confirmWipe = (n) => `${n.sila}, kumbaradaki her şey bu cihazdan silinecek: harcamalar, kategoriler, bütçe, kumbaralar ve kilit. Geri alınamaz; önce yedek almanı öneririm.`;
+export const confirmForgotPin = (n) => `PIN geri getirilemiyor ${n.sila}. Devam edersen kumbaradaki her şey bu cihazdan silinir ve uygulama sıfırdan başlar. (Yedeğin varsa sonra içe aktarabilirsin.)`;

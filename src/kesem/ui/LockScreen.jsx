@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Fingerprint } from "lucide-react";
 import { Jar } from "./art";
 import { useApp } from "./appctx";
-import { LOCK_SUB, LOCK_WAIT, LOCK_WRONG, lockTitle } from "../texts";
+import { confirmForgotPin, LOCK_SUB, LOCK_WAIT, LOCK_WRONG, lockTitle } from "../texts";
 import { PinPad } from "./PinPad";
 import Sheet from "./Sheet";
 import { ConfirmSheetBody } from "./common";
@@ -68,7 +68,7 @@ export default function LockScreen({ onUnlock }) {
       {confirmWipe && (
         <Sheet open onClose={() => setConfirmWipe(false)} title="PIN'ini mi unuttun?" size="sm">
           <ConfirmSheetBody
-            text="PIN geri getirilemez. Devam edersen kumbaradaki verilerin TAMAMI bu cihazdan silinir ve uygulama sıfırdan başlar. (Yedeğin varsa sonra içe aktarabilirsin.)"
+            text={confirmForgotPin(app.names)}
             confirmLabel="Tüm verileri sil"
             onCancel={() => setConfirmWipe(false)}
             onConfirm={async () => { setConfirmWipe(false); await k.wipeAll(); onUnlock(); }}

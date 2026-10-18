@@ -8,13 +8,14 @@ import { ListAnalysisSwitch } from "../ui/parts";
 import { Fit } from "../ui/Fit";
 import TxRow from "../ui/TxRow";
 import { Bubble } from "../ui/icons";
-import { EmptyState, Segmented, UndoRedoButtons } from "../ui/common";
+import { ConfirmSheetBody, EmptyState, Segmented, UndoRedoButtons } from "../ui/common";
+import Sheet from "../ui/Sheet";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { groupByDay, totals } from "../model/stats";
 import { formatMoney, formatMoneyText } from "../model/money";
 import { dayKey, dayLabel, fullDateTime, periodLabel, periodRange, shiftPeriod, shortDate } from "../model/dates";
-import { empty } from "../texts";
+import { confirmDeleteTx, empty } from "../texts";
 
 const FILTERS = [
   { value: "all", label: "Tümü" },
@@ -28,6 +29,7 @@ export function TxDetail({ id, onBack }) {
   const tx = k.txById(id);
   const [img, setImg] = useState(null);
   const [big, setBig] = useState(false);
+  const [askDel, setAskDel] = useState(false);
 
   useEffect(() => {
     let url;
@@ -140,14 +142,21 @@ export function TxDetail({ id, onBack }) {
         <button
           type="button"
           className="k-btn danger-ghost"
-          onClick={async () => {
-            await k.deleteTransaction(tx.id);
-            onBack?.();
-          }}
+          onClick={() => setAskDel(true)}
         >
           <Trash2 size={17} /> Sil
         </button>
       </div>
+      {askDel && (
+        <Sheet open onClose={() => setAskDel(false)} title={confirmDeleteTx(app.names).title} size="sm">
+          <ConfirmSheetBody
+            text={confirmDeleteTx(app.names).text}
+            confirmLabel="Evet, sil"
+            onCancel={() => setAskDel(false)}
+            onConfirm={async () => { setAskDel(false); await k.deleteTransaction(tx.id); onBack?.(); }}
+          />
+        </Sheet>
+      )}
       <div className="k-page-end" />
     </div>
   );

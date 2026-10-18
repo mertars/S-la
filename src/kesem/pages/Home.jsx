@@ -146,8 +146,8 @@ export default function HomePage() {
               {st.hasBudget ? "Bugün harcayabileceğin" : "Bu dönem harcadığın"}
               {todayState && <span className={`k-pill ${todayState}`}>{TODAY_STATE_LABEL[todayState]}</span>}
             </span>
-            <Fit className="k-num xxl">
-              <Amt>{money(st.hasBudget ? Math.max(0, st.todayLeft) : month.expense)}</Amt>
+            <Fit className={`k-num xxl ${todayState === "over" ? "k-state-over" : ""}`}>
+              <Amt>{money(st.hasBudget ? st.todayLeft : month.expense)}</Amt>
             </Fit>
             <span className="k-focus-line">{budgetLine(n, st, (m) => formatMoneyText(m, "TRY", { hideZeroDecimals: true }))}</span>
           </span>

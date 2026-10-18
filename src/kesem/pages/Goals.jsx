@@ -6,14 +6,14 @@ import Sheet from "../ui/Sheet";
 import { Bubble, ICONS, COLOR_KEYS } from "../ui/icons";
 import { Jar } from "../ui/art";
 import { Fit } from "../ui/Fit";
-import { EmptyState } from "../ui/common";
+import { ConfirmSheetBody, EmptyState } from "../ui/common";
 import { useApp } from "../ui/appctx";
 import { useKesem } from "../state/store";
 import { goalProjection, goalSaved } from "../model/finance";
 import { baseOf, formatMoney, formatMoneyText } from "../model/money";
 import { shortDate, fromDateInput, toDateInput, dateTimeLabel } from "../model/dates";
 import { uid } from "../model/schema";
-import { depositMessage, empty, firstGoalNote, goalCelebration, goalLine } from "../texts";
+import { confirmDeleteGoal, depositMessage, empty, firstGoalNote, goalCelebration, goalLine } from "../texts";
 
 const GOAL_ICONS = ["plane", "smartphone", "gift", "home", "car", "piggy", "graduation", "heart", "star", "sofa", "shirt", "flower"];
 const money = (m, c = "TRY") => formatMoney(m, c, { hideZeroDecimals: true });
@@ -21,6 +21,8 @@ const pctText = (v) => `%${Math.round(Math.max(0, v) * 100)}`;
 
 function GoalEditor({ initial, onClose }) {
   const k = useKesem();
+  const app = useApp();
+  const [askDel, setAskDel] = useState(false);
   const [name, setName] = useState(initial.name || "");
   const [icon, setIcon] = useState(initial.icon || "piggy");
   const [color, setColor] = useState(initial.color || "rose");
@@ -61,9 +63,19 @@ function GoalEditor({ initial, onClose }) {
         <div className="k-label">Her ay ayırmak istediğin (isteğe bağlı)</div>
         <AmountField label="Aylık" value={plan} onChange={setPlan} placeholder="Yok" />
         {initial.id && (
-          <button type="button" className="k-btn danger-ghost full k-gap" onClick={async () => { onClose(null, true); await k.removeRecord("goals", initial.id, "kumbara silme"); }}>
+          <button type="button" className="k-btn danger-ghost full k-gap" onClick={() => setAskDel(true)}>
             <Trash2 size={16} /> Kumbarayı sil
           </button>
+        )}
+        {askDel && (
+          <Sheet open onClose={() => setAskDel(false)} title={confirmDeleteGoal(app.names, initial.name).title} size="sm">
+            <ConfirmSheetBody
+              text={confirmDeleteGoal(app.names, initial.name).text}
+              confirmLabel="Evet, sil"
+              onCancel={() => setAskDel(false)}
+              onConfirm={async () => { setAskDel(false); onClose(null, true); await k.removeRecord("goals", initial.id, "kumbara silme"); }}
+            />
+          </Sheet>
         )}
       </div>
     </Sheet>
